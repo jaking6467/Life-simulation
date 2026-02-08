@@ -4,8 +4,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
-// เปลี่ยนจาก GameEngine เป็น AdvancedGameEngine
-const GameEngine = require('./AdvancedGameEngine');
+const AdvancedGameEngine = require('./AdvancedGameEngine');
 
 const app = express();
 const server = http.createServer(app);
@@ -22,7 +21,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 
 // ระบบจัดการห้อง
-const gameEngine = new GameEngine();
+const gameEngine = new AdvancedGameEngine();
 const lobbies = new Map(); // lobbyId -> Lobby
 const waitingPlayers = []; // ผู้เล่นรอจับคู่
 
@@ -387,12 +386,21 @@ function startGame(lobbyId) {
   if (!lobby || lobby.status === 'playing') return;
 
   lobby.status = 'playing';
-  const gameId = uuidv4();
+
+  // ✅ แก้ไข: ใช้ createGame ถูกต้อง
+  const playerList = lobby.players.map(p => ({
+    id: p.id,
+    username: p.username
+  }));
+
+  const gameId = gameEngine.createGame(playerList);
   lobby.gameId = gameId;
 
-  // สร้างเกม
-  const game = gameEngine.createGame(gameId, lobby.players);
-  gameEngine.startGame(gameId);
+  const game = gameEngine.getGame(gameId);
+  if (!game) {
+    console.error('Failed to create game!');
+    return;
+  }
 
   io.to(lobbyId).emit('gameStarted', {
     gameId: gameId,
@@ -469,6 +477,11 @@ function processTurn(lobbyId) {
   if (!lobby || !lobby.gameId) return;
 
   const results = gameEngine.processTurn(lobby.gameId);
+  
+  if (!results) {
+    console.error('processTurn returned null!');
+    return;
+  }
   
   io.to(lobbyId).emit('turnResult', results);
 
