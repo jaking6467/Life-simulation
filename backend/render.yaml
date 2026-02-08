@@ -1,0 +1,13 @@
+# render.yaml
+services:
+  - type: web
+    name: life-simulation-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+    healthCheckPath: /api/status
