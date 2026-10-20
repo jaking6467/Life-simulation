@@ -4,7 +4,8 @@
 // - weekendEvents: สุ่มตอนจบสัปดาห์ของผู้เล่น (เรื่องไม่คาดฝันในชีวิต)
 //
 // eff (ผลของเหตุการณ์): money, hours (เวลาในสัปดาห์นี้), health, happiness, hygiene, xp, points,
-//   groceries, pet, overtime (ชั่วโมงทำโอที), gamble: [{ chance, money, text }], fromOthers (เงินจากผู้เล่นอื่นคนละ)
+//   groceries, pet, overtime (ชั่วโมงทำโอที), gamble: [{ chance, money, text }], fromOthers (เงินจากผู้เล่นอื่นคนละ),
+//   affection (ความรักของคู่) — insurable: ประกันที่ช่วยจ่ายครึ่งหนึ่ง
 
 export const GLOBAL_EVENTS = [
   { id: 'heatwave', icon: '🥵', name: 'คลื่นความร้อน', text: 'อากาศร้อนจัด! ความสะอาดลดลง 2 เท่าตอนจบสัปดาห์', mods: { hygieneDecay: 2 } },
@@ -17,6 +18,7 @@ export const GLOBAL_EVENTS = [
   { id: 'flood', icon: '🌊', name: 'น้ำท่วมถนน', text: 'ถนนน้ำท่วมขัง การเดินทางแต่ละครั้งใช้เวลาเพิ่ม 1 ชม. (ยกเว้นคนมีรถยนต์)', mods: { travelExtra: 1 } },
   { id: 'sale', icon: '🏷️', name: 'มิดเยียร์เซล', text: 'ห้างและร้านเฟอร์นิเจอร์ลดราคา 25%', mods: { shopPrice: 0.75 } },
   { id: 'crime', icon: '🦹', name: 'โจรชุกชุม', text: 'ระวังเงินในกระเป๋า! โอกาสโดนขโมยเพิ่มเป็น 2 เท่า', mods: { theft: 2 } },
+  { id: 'valentine', icon: '💘', name: 'เทศกาลวาเลนไทน์', text: 'บรรยากาศหวานทั้งเมือง เดตได้ความรักเพิ่ม 50% และหาคู่ง่ายขึ้น', mods: { love: 1.5 } },
 ];
 
 export const CHOICE_EVENTS = [
@@ -84,6 +86,20 @@ export const CHOICE_EVENTS = [
     ],
   },
   {
+    id: 'trip', icon: '🏖️', name: 'คู่ของคุณอยากไปทะเล', text: 'แฟนชวนไปเที่ยวทะเลช่วงสุดสัปดาห์ "ไปด้วยกันนะ"', when: (p) => !!p.love && p.cash >= 2000,
+    options: [
+      { id: 'go', label: 'ไปเที่ยวด้วยกัน', desc: 'เสียเวลา 10 ชม. จ่าย ฿2,000 ความสุข +12 ความรัก +20', eff: { hours: -10, money: -2000, happiness: 12, affection: 20 } },
+      { id: 'no', label: 'ไม่ว่างจริง ๆ', desc: 'ความรัก -10', eff: { affection: -10 } },
+    ],
+  },
+  {
+    id: 'kidSick', icon: '🤒', name: 'ลูกไม่สบาย', text: 'ลูกตัวร้อนตั้งแต่เช้า งอแงไม่ยอมไปโรงเรียน', when: (p) => p.kids.length > 0,
+    options: [
+      { id: 'care', label: 'ลางานอยู่ดูแล', desc: 'เสียเวลา 8 ชม. ค่ายา ฿800 ความรัก +6', eff: { hours: -8, money: -800, affection: 6, happiness: 2 } },
+      { id: 'work', label: 'ฝากเพื่อนบ้านดูแล', desc: 'ความสุข -8 ความรัก -8', eff: { happiness: -8, affection: -8 } },
+    ],
+  },
+  {
     id: 'dream', icon: '💤', name: 'ฝันเห็นเลขเด็ด', text: 'เมื่อคืนฝันเห็นงูใหญ่พันตัว... เลขนี้ต้องมา!', when: (p) => p.cash >= 300,
     options: [
       { id: 'buy', label: 'ซื้อลอตเตอรี่ 3 ใบ (฿300)', desc: 'ได้ตั๋วลอตเตอรี่ 3 ใบ ลุ้นงวดถัดไป', eff: { money: -300, tickets: 3 } },
@@ -95,7 +111,12 @@ export const CHOICE_EVENTS = [
 export const WEEKEND_EVENTS = [
   { id: 'flu', icon: '🤒', name: 'เป็นไข้หวัด', text: 'ติดหวัดจากเพื่อนร่วมงาน', eff: { health: -12 } },
   { id: 'bonus', icon: '💰', name: 'โบนัสพิเศษ', text: 'หัวหน้าชมว่าทำงานดี ให้โบนัสพิเศษ', when: (p) => !!p.job && p.weekShifts > 0, eff: { money: 1500 } },
-  { id: 'pipe', icon: '🚿', name: 'ท่อน้ำแตก', text: 'ท่อน้ำในห้องแตก ต้องเรียกช่างมาซ่อม', when: (p) => p.housing === 'flat', eff: { money: -1200, happiness: -4 } },
+  { id: 'pipe', icon: '🚿', name: 'ท่อน้ำแตก', text: 'ท่อน้ำในห้องแตก ต้องเรียกช่างมาซ่อม', when: (p) => p.housing === 'flat', eff: { money: -1200, happiness: -4 }, insurable: 'property' },
+  { id: 'aircon', icon: '❄️', name: 'แอร์เสีย', text: 'แอร์ในบ้านพังกลางหน้าร้อน ต้องซ่อมด่วน', when: (p) => !!p.owned, eff: { money: -2500, happiness: -3 }, insurable: 'property' },
+  { id: 'anniversary', icon: '💝', name: 'วันครบรอบ', text: 'วันครบรอบของคุณกับคนรัก ได้ฉลองเล็ก ๆ ด้วยกัน', when: (p) => !!p.love, eff: { happiness: 8, affection: 8 } },
+  { id: 'jealous', icon: '😒', name: 'แฟนงอน', text: 'แฟนเห็นคุณคุยกับคนอื่นนานไปหน่อย...', when: (p) => p.love?.stage === 'dating', eff: { affection: -12, happiness: -4 } },
+  { id: 'kidArt', icon: '🖍️', name: 'ลูกวาดรูปให้', text: 'ลูกวาดรูปครอบครัวมาให้ น่ารักจนน้ำตาซึม', when: (p) => p.kids.length > 0, eff: { happiness: 10 } },
+  { id: 'rush', icon: '🛒', name: 'ลูกค้าแน่นร้าน', text: 'ร้านของคุณถูกรีวิวในโซเชียล ลูกค้าแห่มาเพียบ', when: (p) => p.businesses.length > 0, eff: { money: 2000 } },
   { id: 'found', icon: '🍀', name: 'เก็บเงินได้', text: 'เจอแบงก์ห้าร้อยตกอยู่ข้างทาง', eff: { money: 500, happiness: 3 } },
   { id: 'rain', icon: '🌧️', name: 'ฝนตกหนัก', text: 'โดนฝนกระหน่ำระหว่างทางกลับบ้าน', when: (p) => p.vehicle !== 'car', eff: { hygiene: -15, happiness: -3 } },
   { id: 'concert', icon: '🎤', name: 'ได้บัตรคอนเสิร์ตฟรี', text: 'ชิงรางวัลจากวิทยุได้บัตรคอนเสิร์ตศิลปินดัง', eff: { happiness: 12 } },

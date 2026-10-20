@@ -1,3 +1,5 @@
+import { RULES } from './rules.js';
+
 // งานทั้งหมด: ค่าแรงต่อชั่วโมง คุณสมบัติที่ต้องใช้ และระดับอาชีพ (tier 1–6 ใช้คิดคะแนนอาชีพ)
 // req: { course: รหัสวุฒิ | minLevel: ระดับวุฒิสูงสุดขั้นต่ำ, xp: ชั่วโมงประสบการณ์, clothes: ระดับชุด, health: สุขภาพขั้นต่ำ }
 // strain = สุขภาพที่ลดลงต่อกะ 8 ชั่วโมง
@@ -20,7 +22,9 @@ export const JOB_PERKS = Object.freeze({
   uni: 'เรียนฟรี: ลดค่าเทอม 50%',
 });
 
-const J = (id, location, title, tier, wage, req = {}, strain = 3) => ({ id, location, title, tier, wage, req, strain });
+// slots = จำนวนตำแหน่งที่มีในเมือง (0 = ไม่จำกัด) งานระดับ 5–6 มีที่เดียว ระดับ 3–4 มี 2 ที่
+const slotsFor = (tier) => (tier >= 5 ? RULES.jobs.slotsTop : tier >= 3 ? RULES.jobs.slotsMid : 0);
+const J = (id, location, title, tier, wage, req = {}, strain = 3) => ({ id, location, title, tier, wage, req, strain, slots: slotsFor(tier) });
 
 export const JOB_LIST = [
   J('fryCook', 'cluckers', 'พนักงานทอดไก่', 1, 60, {}, 3),

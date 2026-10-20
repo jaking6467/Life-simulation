@@ -263,3 +263,15 @@ test('เล่นบนเครื่องเดียวกันหลา�
   }
   assert.equal(last('local-player', 'game').view.week, 2);
 });
+
+test('ตั้งระดับความเก่งของบอทในห้องรอ แล้วเกมใช้ระดับนั้น', () => {
+  const env = setup({ offline: true });
+  ok(env.manager.handle('solo-client-1', 'room:create', { name: 'เดี่ยว' }));
+  ok(env.manager.handle('solo-client-1', 'room:addBot'));
+  ok(env.manager.handle('solo-client-1', 'room:options', { options: { botLevel: 'hard' } }));
+  assert.equal(env.last('solo-client-1', 'room').options.botLevel, 'hard');
+  ok(env.manager.handle('solo-client-1', 'room:options', { options: { botLevel: 'genius' } }));
+  assert.equal(env.last('solo-client-1', 'room').options.botLevel, 'hard', 'ค่าที่ไม่รู้จักต้องไม่เปลี่ยนค่าเดิม');
+  ok(env.manager.handle('solo-client-1', 'room:start'));
+  assert.equal(env.last('solo-client-1', 'game').view.botLevel, 'hard');
+});

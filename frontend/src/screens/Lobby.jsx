@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChatPanel } from '../components/ChatPanel.jsx';
 import { Rules } from '../components/Rules.jsx';
-import { ROLE_LIST, ROLES, RULES, initials } from '../lib/game.js';
+import { BOT_LEVEL_TEXT, ROLE_LIST, ROLES, RULES, initials } from '../lib/game.js';
 
 const TURN_OPTIONS = [
   [0, 'ไม่จำกัดเวลา'],
@@ -134,6 +134,17 @@ export function Lobby({ room, chat, send, onLeave }) {
               {TURN_OPTIONS.map(([v, label]) => (
                 <option key={v} value={v}>
                   {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>ความเก่งของบอท</span>
+            <select disabled={!room.isHost} value={room.options.botLevel || 'normal'} onChange={(e) => setOpt({ botLevel: e.target.value })}>
+              {Object.entries(BOT_LEVEL_TEXT).map(([v, label]) => (
+                <option key={v} value={v}>
+                  {label}
+                  {v === 'easy' ? ' — เล่นชิล ๆ ไม่ลงทุน ไม่แกล้ง' : v === 'hard' ? ' — วางแผนเก่ง ลงทุนเป็น ชอบแกล้งคนที่นำ' : ''}
                 </option>
               ))}
             </select>

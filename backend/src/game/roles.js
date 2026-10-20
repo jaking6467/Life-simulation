@@ -28,7 +28,7 @@ export const ROLE_LIST = [
     quests: [
       { id: 'a1', text: 'เรียนจบศิลปกรรมศาสตร์', points: 15, check: (p) => p.education.completed.includes('arts') },
       { id: 'a2', text: 'ขายภาพได้ 6 ภาพ', points: 25, check: (p) => p.c.artSold >= 6 },
-      { id: 'a3', text: 'ขายภาพได้ราคา ฿5,500 ขึ้นไป', points: 40, check: (p) => p.c.artBest >= 5500 },
+      { id: 'a3', text: 'ขายภาพได้ราคา ฿4,800 ขึ้นไป', points: 40, check: (p) => p.c.artBest >= 4800 },
     ],
   },
   {
@@ -60,7 +60,7 @@ export const ROLE_LIST = [
     name: 'หนอนหนังสือ',
     icon: '📚',
     desc: 'รักการเรียนรู้ เรียนเร็วและได้ทุน',
-    perks: ['เข้าเรียนใช้เวลาแค่ 4 ชม. (ปกติ 6 ชม.)', 'ค่าเทอมลด 30%', 'เรียนจบแต่ละหลักสูตรได้ +5 คะแนน'],
+    perks: ['เข้าเรียนใช้เวลาแค่ 4 ชม. (ปกติ 6 ชม.)', 'ค่าเทอมลด 30%', 'เรียนจบแต่ละหลักสูตรได้ +7 คะแนน'],
     quests: [
       { id: 'sc1', text: 'เรียนจบ 3 หลักสูตร', points: 15, check: (p) => p.education.completed.length >= 3 },
       { id: 'sc2', text: 'เรียนจบปริญญาโท (ระดับ 3)', points: 25, check: (p) => courseLevelMax(p) >= 3 },
@@ -76,7 +76,7 @@ export const ROLE_LIST = [
     quests: [
       { id: 'f1', text: 'ออกกำลังกาย 10 ครั้ง', points: 15, check: (p) => p.c.workouts >= 10 },
       { id: 'f2', text: 'ได้งานเทรนเนอร์ส่วนตัว', points: 25, check: (p) => p.job === 'trainer' || p.c.wasTrainer },
-      { id: 'f3', text: 'จบสัปดาห์ด้วยสุขภาพ 90+ ติดกัน 3 สัปดาห์', points: 40, check: (p) => p.c.healthStreak >= 3 },
+      { id: 'f3', text: 'จบสัปดาห์ด้วยสุขภาพ 90+ ติดกัน 5 สัปดาห์', points: 40, check: (p) => p.c.healthStreak >= 5 },
     ],
   },
   {

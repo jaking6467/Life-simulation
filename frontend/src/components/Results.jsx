@@ -1,4 +1,4 @@
-import { COURSES, JOBS, ROLES, SCORE_CATEGORIES, formatMoney } from '../lib/game.js';
+import { BUSINESSES, COURSES, HOMES, JOBS, ROLES, SCORE_CATEGORIES, formatMoney } from '../lib/game.js';
 
 const MEDALS = ['🥇', '🥈', '🥉', '🏅'];
 
@@ -36,6 +36,10 @@ export function Results({ view, myIds, isHost, onRematch, onLeave, onClose }) {
                   {r.job ? ` · 💼 ${JOBS[r.job].title}` : ' · ว่างงาน'}
                   {r.education.length ? ` · 🎓 ${r.education.map((id) => COURSES[id].icon).join('')}` : ''}
                   {` · ภารกิจสำเร็จ ${r.quests.length}/3`}
+                  {r.love ? ` · ${r.love.stage === 'married' ? '💍' : '💑'} ${r.love.name}` : ''}
+                  {r.kids ? ` 👶×${r.kids}` : ''}
+                  {r.owned ? ` · 🔑 ${HOMES[r.owned].name}` : ''}
+                  {r.businesses?.length ? ` · 🏪 ${r.businesses.map((b) => BUSINESSES[b.id].icon).join('')}` : ''}
                 </div>
               </li>
             );

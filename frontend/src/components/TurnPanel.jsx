@@ -103,6 +103,9 @@ function LocationPanel({ view, me, act, multiLocal }) {
       </div>
       {multiLocal && <p className="hint">ส่งเครื่องให้ <b>{me.name}</b> เล่นได้เลย</p>}
       {!me.ate && <p className="warn-line">🍽️ สัปดาห์นี้ยังไม่ได้กินอะไร! (ไก่ทอด ภัตตาคาร หรือทำกินเองที่บ้าน)</p>}
+      {me.love && me.love.affection < 30 && !me.weekActs?.date && (
+        <p className="warn-line">💔 ความรักกับ{me.love.name}เหลือ {me.love.affection} — ไปเดตหรือใช้เวลาด้วยกันหน่อย ไม่งั้นอาจเลิกกัน!</p>
+      )}
 
       {groups.length === 0 && <p className="muted hint">ที่นี่ไม่มีอะไรให้ทำ แตะอาคารบนแผนที่เพื่อเดินไปที่อื่น</p>}
       {groups.map(([group, list]) => (

@@ -1,4 +1,4 @@
-import { RULES, SCORE_CATEGORIES, formatMoney } from '../lib/game.js';
+import { BUSINESS_LIST, CARD_LIST, INSURANCE_LIST, RULES, SCORE_CATEGORIES, formatMoney, locationName } from '../lib/game.js';
 
 // วิธีเล่นแบบย่อ
 export function Rules() {
@@ -31,6 +31,31 @@ export function Rules() {
           ครบจำนวนสัปดาห์ ใครคะแนนรวมสูงสุดชนะ (เริ่มต้นด้วยเงิน {formatMoney(RULES.startCash)})
         </li>
       </ol>
+
+      <h3>🌟 ระบบขั้นสูง</h3>
+      <ul className="rules-more">
+        <li>
+          <b>💞 ความรักและครอบครัว</b> — หาคู่ที่{locationName('park')} ไปเดตที่ภัตตาคาร โรงหนัง หรือสวน (ดินเนอร์นับเป็นมื้ออาหาร) คบกันครบ {RULES.family.proposeWeeks} สัปดาห์และความรัก {RULES.family.proposeAffection}+ ขอแต่งงานที่วัดได้ (ค่างาน {formatMoney(RULES.family.weddingCost)}) คู่ชีวิตช่วยหารายได้ทุกสัปดาห์ มีลูกที่โรงพยาบาล ความรักลดลงทุกสัปดาห์ ถ้าไม่มีเวลาให้กันจะเลิกกัน
+        </li>
+        <li>
+          <b>⚔️ ตำแหน่งงานมีจำกัด</b> — งานระดับ 5–6 มีที่เดียว ระดับ 3–4 มี 2 ที่ ถ้าเต็มแต่คุณสมบัติ (ประสบการณ์ + วุฒิ + ชุด) ดีกว่าคนที่ครองอยู่เกิน {RULES.jobs.incumbent} คะแนน ชิงตำแหน่งได้ คนเดิมจะถูกลดตำแหน่ง
+        </li>
+        <li>
+          <b>🏪 ธุรกิจของตัวเอง</b> — {BUSINESS_LIST.map((b) => `${b.icon} ${b.name} (${formatMoney(b.price)})`).join(' · ')} ได้กำไรทุกสุดสัปดาห์แต่อาจขาดทุน เข้าไปดูแลเองกำไรเพิ่ม ขยายสาขาได้ และนับเป็นคะแนนอาชีพ
+        </li>
+        <li>
+          <b>🔑 ซื้อบ้านผ่อนธนาคาร</b> — ดาวน์ {Math.round(RULES.mortgage.down * 100)}% แล้วไม่ต้องจ่ายค่าเช่า ผ่อนทุกสัปดาห์ ราคาบ้านขึ้นตามตลาด ขายต่อได้ บ้านของตัวเองได้คะแนนบ้านเพิ่ม 2
+        </li>
+        <li>
+          <b>📄 ประกันภัย</b> (ธนาคาร) — {INSURANCE_LIST.map((i) => `${i.icon} ${i.name} ${formatMoney(i.premium)}/สัปดาห์`).join(' · ')}
+        </li>
+        <li>
+          <b>🃏 การ์ดแกล้งและช่วยเหลือ</b> (ตู้เกม) — {CARD_LIST.map((c) => `${c.icon} ${c.name}`).join(' · ')} ใช้ได้จากทุกที่ สัปดาห์ละ {RULES.cards.perWeek} ใบ มีผลตอนเริ่มตาถัดไปของเป้าหมาย เครื่องรางจากวัดกันได้
+        </li>
+        <li>
+          <b>📈 ตลาด</b> — ของชิ้นไหนมีคนซื้อเยอะ ราคาจะขึ้นแล้วค่อย ๆ ลดลง หุ้นก็ขยับตามแรงซื้อขาย (มีค่าธรรมเนียม {Math.round(RULES.market.stockFee * 100)}%)
+        </li>
+      </ul>
     </div>
   );
 }

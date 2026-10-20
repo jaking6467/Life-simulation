@@ -14,16 +14,24 @@ import { JOBS, JOB_LIST, CLOTHES, JOB_PERKS } from './jobs.js';
 import { COURSES, COURSE_LIST } from './courses.js';
 import { FURNITURE, FURNITURE_LIST, PETS, STOCKS, STOCK_LIST, ARTIFACTS } from './items.js';
 import { ROLES, ROLE_IDS } from './roles.js';
-import { GLOBAL_EVENTS, GLOBAL_EVENT_BY_ID, CHOICE_EVENTS, CHOICE_EVENT_BY_ID, WEEKEND_EVENTS } from './events.js';
+import { GLOBAL_EVENTS, CHOICE_EVENTS, CHOICE_EVENT_BY_ID, WEEKEND_EVENTS } from './events.js';
 import { nextRandom, randInt, shuffle } from './rng.js';
 import { formatMoney as fm } from './format.js';
+import { STAT_NAMES, addPoints, addStats, currentMods, emit, gainCash, log, notify, one, payBill, spend, statText } from './core.js';
+import { applyStockImpact, bumpDemand, decayDemand, demandPrice, demandText, stockQuote } from './market.js';
+import { applyPendingCards, cardActions } from './cards.js';
+import { changeAffection, familyActions, familyPoints, familyWeekly } from './family.js';
+import { businessActions, businessCareer, businessWeekly, businessesValue } from './business.js';
+import { homeEquity, homeValue, mortgageWeekly, propertyActions, updatePropertyMarket } from './property.js';
+import { insuranceActions, insuranceWeekly, insured } from './insurance.js';
 
-const MAX_LOG = 150;
+// เปลี่ยนเลขนี้ทุกครั้งที่โครงสร้างสถานะเกมเปลี่ยน (ไฟล์เซฟเก่าจะโหลดไม่ได้)
+export const STATE_VERSION = 3;
+export const BOT_LEVELS = ['easy', 'normal', 'hard'];
+
 const fail = (error) => ({ ok: false, error });
-const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 const KEEP_CASH = 2000;
 const SENIOR_PENSION = 2500;
-const STAT_NAMES = { health: 'สุขภาพ', happiness: 'ความสุข', hygiene: 'ความสะอาด' };
 
 // ============================================================
 // สร้างเกม
@@ -33,8 +41,9 @@ export function createGame({ players, seed = 1, options = {} }) {
   if (!Array.isArray(players) || players.length < 1) throw new Error('ต้องมีผู้เล่นอย่างน้อย 1 คน');
   const maxWeeks = RULES.weeksOptions.includes(Number(options.weeks)) ? Number(options.weeks) : RULES.defaultWeeks;
   const state = {
-    version: 2,
+    version: STATE_VERSION,
     status: 'playing',
+    botLevel: BOT_LEVELS.includes(options.botLevel) ? options.botLevel : 'normal',
     seed: seed >>> 0,
     rng: seed >>> 0,
     seq: 0,
@@ -48,6 +57,8 @@ export function createGame({ players, seed = 1, options = {} }) {
     players: {},
     global: { eventId: null, closed: null },
     stocks: {},
+    demand: {},
+    propertyIndex: 1,
     log: [],
     logSeq: 0,
     events: [],
@@ -108,6 +119,19 @@ function createPlayer({ id, name, color, isBot }, role) {
     horoscope: null,
     weekShifts: 0,
     weekActs: {},
+    weekMods: {},
+    // ความรักและครอบครัว
+    love: null,
+    kids: [],
+    // บ้านของตัวเอง (null = เช่า) และหนี้บ้าน
+    owned: null,
+    mortgage: null,
+    businesses: [],
+    insurance: {},
+    // การ์ดในมือ การ์ดแกล้งที่รอมีผล และเครื่องรางกันภัย
+    cards: [],
+    pending: [],
+    amulets: 0,
     score: 0,
     bonusPoints: 0,
     questPoints: 0,
@@ -118,6 +142,8 @@ function createPlayer({ id, name, color, isBot }, role) {
       shifts: 0, maxShiftsWeek: 0, workouts: 0, healthStreak: 0, artSold: 0, artBest: 0,
       findsSold: 0, artifactKinds: [], merits: 0, horoscopeHits: 0, lotteryWins: 0, happyWeek: false,
       netWorthBest: 0, wasTrainer: false, ateFastThisWeek: false, ticketsWeek: 0, streams: 0, paintings: 0,
+      dates: 0, partners: 0, married: false, breakups: 0, manages: 0, bizProfit: 0, gifts: 0, pranks: 0, pranked: 0,
+      displaced: 0, takeovers: 0,
     },
     totals: { earned: 0, spent: 0 },
   };
@@ -221,7 +247,6 @@ const COMMANDS = {
 // check(state, p, params): คืนเหตุผลถ้าทำไม่ได้
 // run(state, p, params, { hours, boost }): ทำกิจกรรม คืนข้อความสรุป
 
-const one = (o) => [{ params: {}, cost: 0, ...o }];
 const priceMod = (state, kind) => {
   const mods = currentMods(state);
   if (kind === 'entertainment') return mods.entertainmentPrice || 1;
@@ -292,7 +317,7 @@ const ACTION_DEFS = [
     variants: () => one({ label: 'วาดภาพ', desc: 'สร้างผลงานศิลปะไว้ขายที่ตลาดนัด ยิ่งมีความสุขยิ่งมีราคา', hours: 6 }),
     check: (state, p) => (p.stats.happiness < RULES.minHappinessToWork ? 'หมดแรงบันดาลใจ (ความสุขต่ำเกินไป)' : null),
     run: (state, p, params, { boost }) => {
-      const base = p.stats.happiness * 20 + (p.education.completed.includes('arts') ? 1500 : 0) + randInt(state, 200, 1200);
+      const base = p.stats.happiness * 13 + (p.education.completed.includes('arts') ? 1500 : 0) + randInt(state, 200, 1000);
       const value = Math.round((base * boost) / 100) * 100;
       p.c.paintings++;
       const title = ART_TITLES[(p.c.paintings - 1) % ART_TITLES.length];
@@ -322,7 +347,8 @@ const ACTION_DEFS = [
     id: 'moveIn', icon: '📦', group: 'ที่พัก', at: ['flat', 'condo'],
     variants: (state, p) => {
       const home = HOMES[p.location];
-      return one({ label: `ย้ายมาอยู่${home.name}`, desc: `ค่าเช่า ${fm(home.rent)}/สัปดาห์ (จ่ายล่วงหน้า 1 สัปดาห์) วางของได้ ${home.slots} ชิ้น`, hours: 1, cost: home.rent });
+      if (p.owned === home.id) return one({ label: `ย้ายกลับบ้านของตัวเอง (${home.name})`, desc: `ไม่ต้องจ่ายค่าเช่า วางของได้ ${home.slots} ชิ้น`, hours: 1, cost: 0 });
+      return one({ label: `เช่า${home.name}`, desc: `ค่าเช่า ${fm(home.rent)}/สัปดาห์ (จ่ายล่วงหน้า 1 สัปดาห์) วางของได้ ${home.slots} ชิ้น`, hours: 1, cost: home.rent });
     },
     check: (state, p) => {
       if (p.housing === p.location) return 'คุณอยู่ที่นี่อยู่แล้ว';
@@ -331,7 +357,7 @@ const ACTION_DEFS = [
     },
     run: (state, p) => {
       p.housing = p.location;
-      p.rentPrepaid = true;
+      p.rentPrepaid = p.owned !== p.location;
       return `ย้ายเข้า${HOMES[p.housing].name}เรียบร้อย`;
     },
   },
@@ -384,19 +410,21 @@ const ACTION_DEFS = [
         .sort((a, b) => a.tier - b.tier || a.wage - b.wage)
         .map((j) => ({
           params: { jobId: j.id },
-          label: `${j.title} @ ${LOCATION_BY_ID[j.location].name}`,
-          desc: `${fm(j.wage)}/ชม. • ระดับ ${j.tier} • ${reqText(j)}${JOB_PERKS[j.location] ? ` • สวัสดิการ: ${JOB_PERKS[j.location]}` : ''}`,
+          label: `${jobFull(state, j, p) ? '⚔️ ชิงตำแหน่ง ' : ''}${j.title} @ ${LOCATION_BY_ID[j.location].name}`,
+          desc: `${fm(j.wage)}/ชม. • ระดับ ${j.tier} • ${reqText(j)}${slotText(state, j, p)}${JOB_PERKS[j.location] ? ` • สวัสดิการ: ${JOB_PERKS[j.location]}` : ''}`,
           hours: 1,
           cost: 0,
         })),
-    check: (state, p, v) => jobBlocker(p, JOBS[v.params.jobId]),
+    check: (state, p, v) => jobBlocker(p, JOBS[v.params.jobId]) || slotBlocker(state, p, JOBS[v.params.jobId]),
     run: (state, p, { jobId }) => {
       const job = JOBS[jobId];
       const old = JOBS[p.job];
+      const rival = jobFull(state, job, p) ? weakestHolder(state, job, p) : null;
       p.job = jobId;
       if (jobId === 'trainer') p.c.wasTrainer = true;
+      if (rival) displace(state, rival, job, p);
       log(state, p.id, `📝 ${p.name} ได้งานใหม่: ${job.title} (${fm(job.wage)}/ชม.)${old ? ` แทน${old.title}` : ''}`, 'good');
-      return `ได้งาน${job.title}! ไปทำงานได้ที่${LOCATION_BY_ID[job.location].name}`;
+      return `ได้งาน${job.title}!${rival ? ` (ชิงตำแหน่งจาก ${rival.name})` : ''} ไปทำงานได้ที่${LOCATION_BY_ID[job.location].name}`;
     },
   },
   {
@@ -483,11 +511,15 @@ const ACTION_DEFS = [
     variants: (state) =>
       STOCK_LIST.flatMap((s) => {
         const sizes = s.id === 'GOLD' ? [1, 5] : [10, 50];
-        return sizes.map((n) => ({ params: { symbol: s.id, n }, label: `ซื้อ ${s.icon} ${s.name} ${n} หน่วย`, desc: `ราคา ${fm(state.stocks[s.id].price)}/หน่วย`, hours: 0, cost: Math.round(state.stocks[s.id].price * n) }));
+        return sizes.map((n) => {
+          const q = stockQuote(state, s.id, n, 'buy');
+          return { params: { symbol: s.id, n }, label: `ซื้อ ${s.icon} ${s.name} ${n} หน่วย`, desc: `ราคา ${fm(state.stocks[s.id].price)}/หน่วย • แรงซื้อดันราคา +${pct(q.impact)} • ค่าธรรมเนียม ${pct(RULES.market.stockFee)}`, hours: 0, cost: q.total };
+        });
       }),
     run: (state, p, { symbol, n }) => {
+      applyStockImpact(state, symbol, stockQuote(state, symbol, n, 'buy'));
       p.stocks[symbol] = (p.stocks[symbol] || 0) + n;
-      return `ซื้อ ${STOCKS[symbol].name} ${n} หน่วย (ถือ ${p.stocks[symbol]})`;
+      return `ซื้อ ${STOCKS[symbol].name} ${n} หน่วย (ถือ ${p.stocks[symbol]}) ราคาขยับเป็น ${fm(state.stocks[symbol].price)}`;
     },
   },
   {
@@ -495,13 +527,17 @@ const ACTION_DEFS = [
     variants: (state, p) =>
       Object.entries(p.stocks)
         .filter(([, n]) => n > 0)
-        .map(([sym, n]) => ({ params: { symbol: sym }, label: `ขาย ${STOCKS[sym].icon} ${STOCKS[sym].name} ทั้งหมด ${n} หน่วย`, desc: `ได้ ${fm(state.stocks[sym].price * n)}`, hours: 0, cost: 0 })),
+        .map(([sym, n]) => {
+          const q = stockQuote(state, sym, n, 'sell');
+          return { params: { symbol: sym }, label: `ขาย ${STOCKS[sym].icon} ${STOCKS[sym].name} ทั้งหมด ${n} หน่วย`, desc: `ได้ประมาณ ${fm(q.total)} (แรงขายกดราคา -${pct(q.impact)})`, hours: 0, cost: 0 };
+        }),
     run: (state, p, { symbol }) => {
       const n = p.stocks[symbol];
-      const amount = Math.round(state.stocks[symbol].price * n);
+      const q = stockQuote(state, symbol, n, 'sell');
+      applyStockImpact(state, symbol, q);
       delete p.stocks[symbol];
-      gainCash(state, p, amount);
-      return `ขาย ${STOCKS[symbol].name} ${n} หน่วย ได้ ${fm(amount)}`;
+      gainCash(state, p, q.total);
+      return `ขาย ${STOCKS[symbol].name} ${n} หน่วย ได้ ${fm(q.total)}`;
     },
   },
 
@@ -509,9 +545,10 @@ const ACTION_DEFS = [
   {
     id: 'buyClothes', icon: '👕', group: 'เสื้อผ้า', at: ['mall'],
     variants: (state) =>
-      CLOTHES.filter((c) => c.tier > 0).map((c) => ({ params: { tier: c.tier }, label: `${c.icon} ${c.name}`, desc: `ใส่ได้ ${c.weeks} สัปดาห์`, hours: 0, cost: Math.round(c.price * priceMod(state, 'shop')) })),
+      CLOTHES.filter((c) => c.tier > 0).map((c) => ({ params: { tier: c.tier }, label: `${c.icon} ${c.name}`, desc: `ใส่ได้ ${c.weeks} สัปดาห์${demandText(state, `clothes:${c.tier}`)}`, hours: 0, cost: shopPrice(state, `clothes:${c.tier}`, c.price) })),
     run: (state, p, { tier }) => {
       const c = CLOTHES[tier];
+      bumpDemand(state, `clothes:${tier}`);
       p.clothes = { tier, weeksLeft: c.weeks };
       return `ซื้อ${c.name} (ใส่ได้ ${c.weeks} สัปดาห์)`;
     },
@@ -519,9 +556,10 @@ const ACTION_DEFS = [
   {
     id: 'buyFurniture', icon: '🛋️', group: 'แต่งบ้าน', at: ['furniture'],
     variants: (state, p) =>
-      FURNITURE_LIST.filter((f) => !p.furniture.includes(f.id)).map((f) => ({ params: { itemId: f.id }, label: `${f.icon} ${f.name}`, desc: furnitureText(f), hours: 0, cost: Math.round(f.price * priceMod(state, 'shop')) })),
+      FURNITURE_LIST.filter((f) => !p.furniture.includes(f.id)).map((f) => ({ params: { itemId: f.id }, label: `${f.icon} ${f.name}`, desc: `${furnitureText(f)}${demandText(state, `furniture:${f.id}`)}`, hours: 0, cost: shopPrice(state, `furniture:${f.id}`, f.price) })),
     check: (state, p) => (p.furniture.length >= HOMES[p.housing].slots ? `บ้านเต็มแล้ว (${HOMES[p.housing].slots} ชิ้น) ย้ายไปคอนโดเพื่อวางของเพิ่ม` : null),
     run: (state, p, { itemId }) => {
+      bumpDemand(state, `furniture:${itemId}`);
       p.furniture.push(itemId);
       log(state, p.id, `🛋️ ${p.name} ซื้อ${FURNITURE[itemId].name}เข้าบ้าน`, 'info');
       return `ซื้อ${FURNITURE[itemId].name} ส่งถึงบ้านแล้ว`;
@@ -534,10 +572,11 @@ const ACTION_DEFS = [
       const tradeIn = p.vehicle ? Math.round(VEHICLES[p.vehicle].price * 0.5) : 0;
       return VEHICLE_ORDER.slice(current + 1).map((id) => {
         const v = VEHICLES[id];
-        return { params: { vehicle: id }, label: `${v.icon} ${v.name}`, desc: `เดินทางเร็วขึ้น (เวลา ×${v.factor})${tradeIn ? ` • หักราคาเทิร์นรถเดิม ${fm(tradeIn)}` : ''}`, hours: 0, cost: v.price - tradeIn };
+        return { params: { vehicle: id }, label: `${v.icon} ${v.name}`, desc: `เดินทางเร็วขึ้น (เวลา ×${v.factor})${tradeIn ? ` • หักราคาเทิร์นรถเดิม ${fm(tradeIn)}` : ''}${demandText(state, `vehicle:${id}`)}`, hours: 0, cost: demandPrice(state, `vehicle:${id}`, v.price) - tradeIn };
       });
     },
     run: (state, p, { vehicle }) => {
+      bumpDemand(state, `vehicle:${vehicle}`);
       p.vehicle = vehicle;
       log(state, p.id, `${VEHICLES[vehicle].icon} ${p.name} ถอย${VEHICLES[vehicle].name}ป้ายแดง!`, 'good');
       return `ได้${VEHICLES[vehicle].name}แล้ว เดินทางเร็วขึ้น`;
@@ -576,7 +615,7 @@ const ACTION_DEFS = [
   },
   {
     id: 'checkup', icon: '🩺', group: 'รักษาพยาบาล', at: ['hospital'],
-    variants: () => one({ label: 'พบแพทย์และรักษาตัว', desc: 'สุขภาพ +30', hours: 2, cost: 1500 }),
+    variants: (state, p) => one({ label: 'พบแพทย์และรักษาตัว', desc: `สุขภาพ +30${insured(p, 'health') ? ' (ประกันสุขภาพลด 50%)' : ''}`, hours: 2, cost: insured(p, 'health') ? 750 : 1500 }),
     check: (state, p) => (p.stats.health >= 100 ? 'สุขภาพแข็งแรงดีแล้ว' : null),
     run: (state, p, params, { boost }) => `รักษาตัว (${statText(addStats(state, p, { health: 30 }, boost))})`,
   },
@@ -666,7 +705,17 @@ const ACTION_DEFS = [
       return `ขายภาพ "${art.title}" ได้ ${fm(price)}`;
     },
   },
+
+  // ---------- ระบบเสริม: ครอบครัว ธุรกิจ บ้าน ประกัน การ์ด ----------
+  ...familyActions,
+  ...businessActions,
+  ...propertyActions,
+  ...insuranceActions,
+  ...cardActions,
 ];
+
+const pct = (x) => `${Math.round(x * 1000) / 10}%`;
+const shopPrice = (state, key, base) => demandPrice(state, key, base * priceMod(state, 'shop'));
 
 function bankAmount(amount, pool) {
   if (amount === 'all') return pool;
@@ -679,6 +728,7 @@ const ART_TITLES = ['แสงแรกของวัน', 'เจ้าพร�
 
 function isAt(state, p, def) {
   if (def.role && def.role !== p.role) return false;
+  if (def.at === 'any') return true;
   if (def.at === 'home') return p.location === p.housing;
   if (def.at === 'job') return !!p.job && JOBS[p.job].location === p.location;
   return def.at.includes(p.location);
@@ -730,8 +780,9 @@ export function courseFeeFor(p, courseId) {
   return courseFee(p, COURSES[courseId]);
 }
 
-export function canTakeJob(p, job) {
-  return !jobBlocker(p, job);
+// สมัครงานนี้ได้ไหม (รวมเรื่องตำแหน่งเต็ม) — ใช้วางแผนให้บอท
+export function canTakeJob(state, p, job) {
+  return !jobBlocker(p, job) && !slotBlocker(state, p, job);
 }
 
 export function moveHours(state, p, to) {
@@ -789,11 +840,8 @@ function attendClass(state, p, online) {
     p.education.completed.push(c.id);
     p.education.enrolled = null;
     p.education.progress = 0;
-    if (p.role === 'scholar') {
-      p.bonusPoints += 5;
-      p.score += 5;
-    }
-    log(state, p.id, `🎓 ${p.name} เรียนจบ${c.name}!${p.role === 'scholar' ? ' (หนอนหนังสือ +5 คะแนน)' : ''}`, 'good');
+    if (p.role === 'scholar') addPoints(p, 7);
+    log(state, p.id, `🎓 ${p.name} เรียนจบ${c.name}!${p.role === 'scholar' ? ' (หนอนหนังสือ +7 คะแนน)' : ''}`, 'good');
     return `${online ? 'เรียนออนไลน์' : 'เข้าเรียน'}คาบสุดท้าย — เรียนจบ${c.name}! 🎓`;
   }
   return `${online ? 'เรียนออนไลน์' : 'เข้าเรียน'}${c.name} (${p.education.progress}/${c.sessions} คาบ)`;
@@ -825,6 +873,53 @@ function jobBlocker(p, job) {
   return null;
 }
 
+// ---------- ตำแหน่งงานมีจำกัด ----------
+// คะแนนคุณสมบัติ = ประสบการณ์ + ระดับวุฒิรวม×40 + ระดับชุด×15
+export function jobMerit(p) {
+  const levels = p.education.completed.reduce((s, id) => s + COURSES[id].level, 0);
+  return p.xp + levels * RULES.jobs.eduWeight + p.clothes.tier * RULES.jobs.clothesWeight;
+}
+
+export function jobHolders(state, job, except = null) {
+  return state.order.map((id) => state.players[id]).filter((x) => x.job === job.id && x !== except);
+}
+
+function jobFull(state, job, p) {
+  return job.slots > 0 && jobHolders(state, job, p).length >= job.slots;
+}
+
+function weakestHolder(state, job, p) {
+  return jobHolders(state, job, p).sort((a, b) => jobMerit(a) - jobMerit(b))[0] || null;
+}
+
+function slotText(state, job, p) {
+  if (!job.slots) return '';
+  const holders = jobHolders(state, job, p);
+  if (holders.length < job.slots) return ` • ว่าง ${job.slots - holders.length}/${job.slots} ตำแหน่ง`;
+  const rival = weakestHolder(state, job, p);
+  return ` • เต็ม! ${holders.map((h) => h.name).join(', ')} ครองอยู่ (คุณสมบัติ ${jobMerit(rival)} + เปรียบ ${RULES.jobs.incumbent} / คุณ ${jobMerit(p)})`;
+}
+
+function slotBlocker(state, p, job) {
+  if (!jobFull(state, job, p)) return null;
+  const rival = weakestHolder(state, job, p);
+  const need = jobMerit(rival) + RULES.jobs.incumbent;
+  if (jobMerit(p) > need) return null;
+  return `ตำแหน่งเต็ม ${rival.name} ครองอยู่ — คุณสมบัติต้องเกิน ${need} (คุณมี ${jobMerit(p)})`;
+}
+
+// ถูกแย่งตำแหน่ง: ย้ายไปงานที่ดีที่สุดในที่เดียวกันที่ยังทำได้ ถ้าไม่มีก็ตกงาน
+function displace(state, rival, job, winner) {
+  const fallback = JOB_LIST.filter((j) => j.location === job.location && j.id !== job.id && j.tier < job.tier && !jobBlocker(rival, j) && !jobFull(state, j, rival)).sort((a, b) => b.wage - a.wage)[0];
+  rival.job = fallback ? fallback.id : null;
+  rival.c.displaced++;
+  winner.c.takeovers++;
+  const where = fallback ? `ถูกลดตำแหน่งเป็น${fallback.title}` : 'ตกงาน!';
+  log(state, rival.id, `⚔️ ${winner.name} ชิงตำแหน่ง${job.title}จาก ${rival.name} — ${rival.name} ${where}`, 'bad');
+  notify(state, rival.id, '⚔️', `${winner.name} ชิงตำแหน่ง${job.title}จาก ${rival.name}! (${where})`, 'bad');
+  addStats(state, rival, { happiness: -8 });
+}
+
 function workBlocker(p, job) {
   if (p.stats.happiness < RULES.minHappinessToWork) return 'หมดไฟ ทำงานไม่ไหว (ความสุขต่ำเกินไป)';
   if (p.stats.hygiene < RULES.minHygieneToWork) return 'ความสะอาดต่ำเกินไป หัวหน้าไม่ให้เข้างาน';
@@ -833,7 +928,7 @@ function workBlocker(p, job) {
 }
 
 function wageMultiplier(state, p) {
-  let mult = currentMods(state).wage || 1;
+  let mult = (currentMods(state).wage || 1) * (p.weekMods.wage || 1);
   if (p.pets.includes('dog')) mult *= 1.1;
   if (p.role === 'workaholic') mult *= 1 + 0.1 * Math.min(4, p.weekShifts);
   return mult;
@@ -939,59 +1034,6 @@ function luckyBoost(state, p) {
 // ระบบพื้นฐาน: เงิน ค่าสถานะ ผลของเหตุการณ์
 // ============================================================
 
-function gainCash(state, p, amount) {
-  if (amount <= 0) return;
-  p.cash += amount;
-  p.totals.earned += amount;
-}
-
-function spend(state, p, amount) {
-  p.cash -= amount;
-  p.totals.spent += amount;
-}
-
-// ค่าใช้จ่ายจำเป็น: ตัดเงินสด → เงินฝาก → กู้ธนาคารอัตโนมัติ
-function payBill(state, p, amount, reason) {
-  if (amount <= 0) return;
-  p.totals.spent += amount;
-  let left = amount;
-  const fromCash = Math.min(p.cash, left);
-  p.cash -= fromCash;
-  left -= fromCash;
-  if (left > 0) {
-    const fromSavings = Math.min(p.savings, left);
-    p.savings -= fromSavings;
-    left -= fromSavings;
-  }
-  if (left > 0) {
-    const n = Math.ceil(left / RULES.loan.amount);
-    p.loans += n;
-    p.cash += n * RULES.loan.amount - left;
-    addStats(state, p, { happiness: -5 });
-    log(state, p.id, `🏦 ${p.name} เงินไม่พอจ่าย${reason} ธนาคารให้กู้อัตโนมัติ ${n} สัญญา`, 'bad');
-  }
-}
-
-// mult ใช้คูณเฉพาะค่าที่เพิ่มขึ้น (โบนัสจากดวง)
-function addStats(state, p, delta, mult = 1) {
-  const applied = {};
-  for (const [k, v] of Object.entries(delta)) {
-    if (!v) continue;
-    const before = p.stats[k];
-    const change = v > 0 ? Math.round(v * mult) : v;
-    p.stats[k] = clamp(before + change);
-    applied[k] = p.stats[k] - before;
-  }
-  return applied;
-}
-
-function statText(d) {
-  return Object.entries(d)
-    .filter(([, v]) => v)
-    .map(([k, v]) => `${STAT_NAMES[k]} ${v > 0 ? '+' : ''}${v}`)
-    .join(', ') || 'ไม่มีอะไรเปลี่ยน';
-}
-
 function applyEffect(state, p, eff, source) {
   if (!eff) return;
   if (eff.hours) p.hoursLeft = Math.max(0, Math.min(p.hoursMax, p.hoursLeft + eff.hours));
@@ -1001,11 +1043,9 @@ function applyEffect(state, p, eff, source) {
   for (const k of ['health', 'happiness', 'hygiene']) if (eff[k]) stats[k] = eff[k];
   if (Object.keys(stats).length) addStats(state, p, stats);
   if (eff.xp) p.xp += eff.xp;
-  if (eff.points) {
-    p.bonusPoints += eff.points;
-    p.score += eff.points;
-  }
+  if (eff.points) addPoints(p, eff.points);
   if (eff.groceries) p.groceries = Math.min(groceryCap(p), p.groceries + eff.groceries);
+  if (eff.affection) changeAffection(p, eff.affection);
   if (eff.pet && !p.pets.includes(eff.pet)) p.pets.push(eff.pet);
   if (eff.tickets) p.tickets += eff.tickets;
   if (eff.overtime && p.job) {
@@ -1043,20 +1083,19 @@ function checkCollapse(state, p) {
 function hospitalize(state, p) {
   p.stats.health = RULES.hospitalized.health;
   p.location = 'hospital';
-  payBill(state, p, RULES.hospitalized.cost, 'ค่าโรงพยาบาล');
-  emit(state, { type: 'event', kind: 'collapse', playerId: p.id, icon: '🚑', name: 'หมดสติ!', text: `${p.name} ร่างกายไม่ไหว ถูกหามส่งโรงพยาบาล เสียค่ารักษา ${fm(RULES.hospitalized.cost)}` });
-  log(state, p.id, `🚑 ${p.name} หมดสติ ถูกหามส่งโรงพยาบาล (-${fm(RULES.hospitalized.cost)})`, 'bad');
-}
-
-function currentMods(state) {
-  return GLOBAL_EVENT_BY_ID[state.global.eventId]?.mods || {};
+  const cost = insured(p, 'health') ? Math.round(RULES.hospitalized.cost * 0.2) : RULES.hospitalized.cost;
+  const covered = insured(p, 'health') ? ' (ประกันสุขภาพจ่ายให้ 80%)' : '';
+  payBill(state, p, cost, 'ค่าโรงพยาบาล');
+  emit(state, { type: 'event', kind: 'collapse', playerId: p.id, icon: '🚑', name: 'หมดสติ!', text: `${p.name} ร่างกายไม่ไหว ถูกหามส่งโรงพยาบาล เสียค่ารักษา ${fm(cost)}${covered}` });
+  log(state, p.id, `🚑 ${p.name} หมดสติ ถูกหามส่งโรงพยาบาล (-${fm(cost)})${covered}`, 'bad');
 }
 
 export function netWorth(state, p) {
   const stocks = Object.entries(p.stocks).reduce((s, [sym, n]) => s + state.stocks[sym].price * n, 0);
   const vehicle = p.vehicle ? VEHICLES[p.vehicle].price * 0.5 : 0;
   const furniture = p.furniture.reduce((s, id) => s + FURNITURE[id].price * 0.4, 0);
-  return Math.round(p.cash + p.savings + stocks + vehicle + furniture - p.loans * RULES.loan.repay);
+  const assets = stocks + vehicle + furniture + homeEquity(state, p) + businessesValue(p);
+  return Math.round(p.cash + p.savings + assets - p.loans * RULES.loan.repay);
 }
 
 // ============================================================
@@ -1072,9 +1111,10 @@ export function weeklyPoints(state, p) {
     happiness: Math.min(8, Math.floor(p.stats.happiness / 12.5)),
     hygiene: Math.min(4, Math.floor(p.stats.hygiene / 25)),
     education: Math.min(8, levels),
-    career: job ? Math.min(8, job.tier + Math.min(2, Math.floor(p.xp / 100))) : 0,
+    career: Math.min(8, Math.max(job ? job.tier + Math.min(2, Math.floor(p.xp / 100)) : 0, businessCareer(p))),
     wealth: RULES.wealthTiers.filter((t) => nw >= t).length,
-    home: HOMES[p.housing].homePoints + Math.min(4, Math.floor(decorScore(p) / 2)),
+    home: HOMES[p.housing].homePoints + (p.owned && p.owned === p.housing ? 2 : 0) + Math.min(4, Math.floor(decorScore(p) / 2)),
+    family: familyPoints(p),
   };
   return { breakdown: b, total: Object.values(b).reduce((s, v) => s + v, 0) };
 }
@@ -1127,12 +1167,14 @@ function beginTurn(state) {
   p.ate = false;
   p.weekShifts = 0;
   p.weekActs = {};
+  p.weekMods = {};
   p.c.ateFastThisWeek = false;
   p.c.ticketsWeek = 0;
   emit(state, { type: 'turn', playerId: p.id, week: state.week });
 
   const mods = currentMods(state);
   if (mods.startEffect) addStats(state, p, mods.startEffect);
+  applyPendingCards(state, p);
   if (p.role === 'senior') {
     gainCash(state, p, SENIOR_PENSION);
     log(state, p.id, `👴 ${p.name} ได้รับเงินบำนาญ ${fm(SENIOR_PENSION)}`, 'good');
@@ -1170,14 +1212,18 @@ function endWeek(state, p) {
 
   const home = HOMES[p.housing];
   if (p.rentPrepaid) p.rentPrepaid = false;
-  else {
+  else if (p.owned !== p.housing) {
     payBill(state, p, home.rent, 'ค่าเช่า');
     notes.push(`🏠 จ่ายค่าเช่า${home.name} ${fm(home.rent)}`);
   }
+  mortgageWeekly(state, p, notes);
   if (p.pets.length) {
     payBill(state, p, RULES.petFood * p.pets.length, 'ค่าอาหารสัตว์');
     notes.push(`🐾 ค่าอาหารสัตว์ ${fm(RULES.petFood * p.pets.length)}`);
   }
+  familyWeekly(state, p, notes);
+  businessWeekly(state, p, notes, insured(p, 'business'));
+  insuranceWeekly(state, p, notes);
 
   const passive = { ...RULES.passive };
   if (p.role === 'senior') passive.health = -7;
@@ -1211,9 +1257,10 @@ function endWeek(state, p) {
         notes.push('🤖 หุ่นยนต์ดูดฝุ่นติดอาวุธไล่ขโมยหนีไปได้!');
       } else {
         const lost = Math.min(RULES.theft.max, Math.round(p.cash * RULES.theft.share));
-        p.cash -= lost;
-        notes.push(`🦹 ขโมยขึ้นบ้าน! เงินสดหาย ${fm(lost)} (ฝากธนาคารไว้จะปลอดภัยกว่า)`);
-        log(state, p.id, `🦹 ขโมยขึ้นบ้าน ${p.name} เงินหาย ${fm(lost)}`, 'bad');
+        const back = insured(p, 'property') ? Math.round(lost * 0.8) : 0;
+        p.cash -= lost - back;
+        notes.push(`🦹 ขโมยขึ้นบ้าน! เงินสดหาย ${fm(lost)}${back ? ` (ประกันจ่ายคืน ${fm(back)})` : ' (ฝากธนาคารไว้จะปลอดภัยกว่า)'}`);
+        log(state, p.id, `🦹 ขโมยขึ้นบ้าน ${p.name} เงินหาย ${fm(lost - back)}`, 'bad');
       }
     }
   }
@@ -1222,9 +1269,16 @@ function endWeek(state, p) {
   const pool = WEEKEND_EVENTS.filter((e) => !e.when || e.when(p, state));
   if (pool.length && nextRandom(state) < RULES.weeklyEventChance) {
     const ev = pool[randInt(state, 0, pool.length - 1)];
-    weekendEvent = { icon: ev.icon, name: ev.name, text: ev.text };
-    log(state, p.id, `${ev.icon} ${p.name}: ${ev.name} — ${ev.text}`, 'info');
-    applyEffect(state, p, ev.eff, ev.name);
+    let eff = ev.eff;
+    let text = ev.text;
+    // ประกันบ้านจ่ายค่าซ่อมให้ครึ่งหนึ่ง
+    if (ev.insurable && insured(p, ev.insurable) && eff.money < 0) {
+      eff = { ...eff, money: Math.round(eff.money / 2) };
+      text += ` (ประกันจ่ายให้ครึ่งหนึ่ง)`;
+    }
+    weekendEvent = { icon: ev.icon, name: ev.name, text };
+    log(state, p.id, `${ev.icon} ${p.name}: ${ev.name} — ${text}`, 'info');
+    applyEffect(state, p, eff, ev.name);
   }
 
   if (p.stats.health <= 0) hospitalize(state, p);
@@ -1262,8 +1316,10 @@ function nextTurn(state) {
 }
 
 function endRound(state) {
-  // ราคาหุ้นเปลี่ยน
+  // ราคาหุ้นเปลี่ยน ของในร้านกลับสู่ราคาปกติทีละน้อย ราคาบ้านขยับ
   const drift = currentMods(state).stockDrift || 0;
+  decayDemand(state);
+  updatePropertyMarket(state, drift);
   for (const s of STOCK_LIST) {
     const st = state.stocks[s.id];
     const change = drift + 0.005 + (nextRandom(state) - 0.5) * 2 * s.vol;
@@ -1329,6 +1385,10 @@ function finishGame(state) {
       education: p.education.completed.slice(),
       stats: { ...p.stats },
       totals: { ...p.totals },
+      love: p.love ? { name: p.love.name, stage: p.love.stage } : null,
+      kids: p.kids.length,
+      owned: p.owned,
+      businesses: p.businesses.map((b) => ({ id: b.id, level: b.level })),
     };
   });
   results.sort((a, b) => b.score - a.score || b.netWorth - a.netWorth);
@@ -1345,15 +1405,6 @@ function finishGame(state) {
 // ============================================================
 // เครื่องมือสำหรับห้องเกม
 // ============================================================
-
-function emit(state, event) {
-  state.events.push(event);
-}
-
-function log(state, playerId, text, tone = 'info') {
-  state.log.push({ id: ++state.logSeq, week: state.week, playerId, text, tone });
-  if (state.log.length > MAX_LOG) state.log.splice(0, state.log.length - MAX_LOG);
-}
 
 export function addLog(state, text, tone = 'info', playerId = null) {
   log(state, playerId, text, tone);
@@ -1396,7 +1447,10 @@ export function toPublicView(state) {
     currentPlayerId: cur,
     phase: JSON.parse(JSON.stringify(state.phase)),
     global: { ...state.global },
+    botLevel: state.botLevel,
     stocks: JSON.parse(JSON.stringify(state.stocks)),
+    demand: { ...state.demand },
+    propertyIndex: state.propertyIndex,
     players: state.order.map((id) => publicPlayer(state, state.players[id])),
     actions: cur ? listActions(state, cur) : [],
     travel: cur ? travelOptions(state, cur) : {},
@@ -1410,6 +1464,8 @@ function publicPlayer(state, p) {
   copy.netWorth = netWorth(state, p);
   copy.weeklyPreview = weeklyPoints(state, p);
   copy.decor = decorScore(p);
+  copy.merit = jobMerit(p);
+  copy.homeValue = p.owned ? homeValue(state, p.owned) : 0;
   return copy;
 }
 

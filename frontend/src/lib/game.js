@@ -7,9 +7,15 @@ export { ROLES, ROLE_LIST } from '@game/roles.js';
 export { RULES, TIMING, SCORE_CATEGORIES } from '@game/rules.js';
 export { GLOBAL_EVENT_BY_ID, CHOICE_EVENT_BY_ID } from '@game/events.js';
 export { formatMoney, formatShort } from '@game/format.js';
+export { CARDS, CARD_LIST } from '@game/cards.js';
+export { BUSINESSES, BUSINESS_LIST } from '@game/business.js';
+export { INSURANCE, INSURANCE_LIST } from '@game/insurance.js';
+export { DATE_SPOTS, DATE_STYLES } from '@game/family.js';
 
 import { JOBS } from '@game/jobs.js';
 import { LOCATION_BY_ID } from '@game/city.js';
+
+export const BOT_LEVEL_TEXT = { easy: '😊 ง่าย', normal: '🙂 ปกติ', hard: '😈 ยาก' };
 
 export function jobTitle(p) {
   return JOBS[p.job]?.title || null;

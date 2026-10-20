@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CLOTHES, COURSES, FURNITURE, HOMES, JOBS, PETS, ROLES, STOCKS, VEHICLES, formatMoney, initials, locationName } from '../lib/game.js';
+import { BUSINESSES, CARDS, CLOTHES, COURSES, DATE_STYLES, FURNITURE, HOMES, INSURANCE, JOBS, PETS, ROLES, STOCKS, VEHICLES, formatMoney, initials, locationName } from '../lib/game.js';
 
 export function PlayerList({ view, seats, myIds }) {
   const seatById = Object.fromEntries((seats || []).map((s) => [s.id, s]));
@@ -90,8 +90,23 @@ function PlayerCard({ player: p, view, order, rank, seat, isCurrent, isMine }) {
           </small>
         )}
       </div>
+      {(p.love || p.kids.length > 0) && <FamilyLine p={p} />}
+      {p.businesses.length > 0 && (
+        <div className="pcard-line">
+          🏪{' '}
+          {p.businesses.map((b) => (
+            <span key={b.id} className="biz-chip" title={`${BUSINESSES[b.id].name} ระดับ ${b.level}${b.lastProfit != null ? ` • สัปดาห์ล่าสุด ${formatMoney(b.lastProfit)}` : ''}`}>
+              {BUSINESSES[b.id].icon} Lv{b.level}
+              {b.lastProfit != null && <small className={b.lastProfit >= 0 ? 'up' : 'down'}> {b.lastProfit >= 0 ? '+' : ''}{formatMoney(b.lastProfit)}</small>}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="pcard-icons">
-        <span title={HOMES[p.housing].name}>{p.housing === 'condo' ? '🏙️' : '🏚️'}</span>
+        <span title={`${HOMES[p.housing].name}${p.owned === p.housing ? ' (บ้านของตัวเอง)' : ' (เช่า)'}`}>
+          {p.housing === 'condo' ? '🏙️' : '🏚️'}
+          {p.owned === p.housing && '🔑'}
+        </span>
         {p.furniture.map((id) => (
           <span key={id} title={FURNITURE[id].name}>{FURNITURE[id].icon}</span>
         ))}
@@ -100,6 +115,11 @@ function PlayerCard({ player: p, view, order, rank, seat, isCurrent, isMine }) {
           <span key={id} title={PETS[id].name}>{PETS[id].icon}</span>
         ))}
         <span title={`เสื้อผ้า: ${CLOTHES[p.clothes.tier].name}${p.clothes.tier ? ` (เหลือ ${p.clothes.weeksLeft} สัปดาห์)` : ''}`}>{CLOTHES[p.clothes.tier].icon || '🩹'}</span>
+        {Object.keys(p.insurance).map((id) => (
+          <span key={id} title={INSURANCE[id].name}>{INSURANCE[id].icon}</span>
+        ))}
+        {p.cards.length > 0 && <span title={isMine ? `การ์ดในมือ: ${p.cards.map((c) => CARDS[c].name).join(', ')}` : `ถือการ์ด ${p.cards.length} ใบ`}>🃏×{p.cards.length}</span>}
+        {p.amulets > 0 && <span title="เครื่องรางกันการ์ดแกล้ง">🧿×{p.amulets}</span>}
         {isCurrent && <span title={p.ate ? 'กินแล้วสัปดาห์นี้' : 'ยังไม่ได้กิน'}>{p.ate ? '🍽️✓' : '🍽️✗'}</span>}
       </div>
       <footer className="pcard-foot">
@@ -109,13 +129,32 @@ function PlayerCard({ player: p, view, order, rank, seat, isCurrent, isMine }) {
       <button type="button" className="pcard-more" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         🏅 ภารกิจ {done}/{role.quests.length} {p.lastWeek ? `· สัปดาห์ล่าสุด +${p.lastWeek.points}` : ''} {open ? '▲' : '▼'}
       </button>
-      {open && <Details p={p} view={view} role={role} />}
+      {open && <Details p={p} view={view} role={role} isMine={isMine} />}
     </article>
   );
 }
 
-function Details({ p, view, role }) {
+function FamilyLine({ p }) {
+  const L = p.love;
+  return (
+    <div className="pcard-line family-line">
+      {L && (
+        <span title={`${L.stage === 'married' ? 'คู่ชีวิต' : 'แฟน'}: ${L.name} • ความรัก ${L.affection}/100 • ชอบ${DATE_STYLES[L.likes]}`}>
+          {L.stage === 'married' ? '💍' : '💑'} {L.name}{' '}
+          <span className={`love-meter${L.affection < 30 ? ' is-low' : ''}`} aria-label={`ความรัก ${L.affection}`}>
+            <span style={{ width: `${L.affection}%` }} />
+          </span>
+          <small className="muted"> {L.affection}</small>
+        </span>
+      )}
+      {p.kids.length > 0 && <span title={p.kids.map((k) => k.name).join(', ')}> 👶×{p.kids.length}</span>}
+    </div>
+  );
+}
+
+function Details({ p, view, role, isMine }) {
   const stocks = Object.entries(p.stocks).filter(([, n]) => n > 0);
+  const L = p.love;
   return (
     <div className="pcard-details">
       <ul className="quests">
@@ -140,8 +179,32 @@ function Details({ p, view, role }) {
           📈 หุ้น: {stocks.map(([sym, n]) => `${STOCKS[sym].icon} ${n} หน่วย (${formatMoney(view.stocks[sym].price * n)})`).join(', ')}
         </p>
       )}
+      {L && (
+        <p className="small">
+          {L.stage === 'married' ? '💍 แต่งงานกับ' : '💑 คบกับ'}
+          {L.name} {L.weeks} สัปดาห์ · ชอบ{DATE_STYLES[L.likes]}
+          {L.stage === 'married' ? ` · ช่วยหารายได้ ${formatMoney(L.income)}/สัปดาห์` : ''}
+        </p>
+      )}
+      {p.kids.length > 0 && <p className="small">👶 ลูก: {p.kids.map((k) => k.name).join(', ')}</p>}
+      {p.owned && (
+        <p className="small">
+          🔑 เป็นเจ้าของ{HOMES[p.owned].name} (มูลค่า {formatMoney(p.homeValue)})
+          {p.mortgage ? ` · เหลือหนี้บ้าน ${formatMoney(p.mortgage.remaining)} ผ่อน ${formatMoney(p.mortgage.payment)}/สัปดาห์` : ' · ผ่อนหมดแล้ว'}
+        </p>
+      )}
+      {p.businesses.length > 0 && (
+        <p className="small">
+          🏪 ธุรกิจ:{' '}
+          {p.businesses
+            .map((b) => `${BUSINESSES[b.id].icon} ${BUSINESSES[b.id].name} ระดับ ${b.level}${b.lastProfit != null ? ` (สัปดาห์ล่าสุด ${b.lastProfit >= 0 ? '+' : ''}${formatMoney(b.lastProfit)})` : ''}`)
+            .join(', ')}
+        </p>
+      )}
+      {Object.keys(p.insurance).length > 0 && <p className="small">📄 ประกัน: {Object.keys(p.insurance).map((id) => INSURANCE[id].name).join(', ')}</p>}
+      {isMine && p.cards.length > 0 && <p className="small">🃏 การ์ดในมือ: {p.cards.map((c) => `${CARDS[c].icon} ${CARDS[c].name}`).join(', ')}</p>}
       <p className="small muted">
-        🛒 ของสด {p.groceries} มื้อ · 🎟️ ลอตเตอรี่ {p.tickets} ใบ · ⭐ ประสบการณ์ทำงาน {p.xp} ชม.
+        🛒 ของสด {p.groceries} มื้อ · 🎟️ ลอตเตอรี่ {p.tickets} ใบ · ⭐ ประสบการณ์ทำงาน {p.xp} ชม. · 🏅 คะแนนคุณสมบัติงาน {p.merit}
       </p>
       {p.weeklyPreview && (
         <p className="small muted">

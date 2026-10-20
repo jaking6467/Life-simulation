@@ -71,6 +71,12 @@ export function usePlayback(feed, { speed = 1, myIds = [] } = {}) {
           case 'lottery':
             toast(`🎟️ ผลลอตเตอรี่: ${ev.text}`, 'info');
             break;
+          case 'notify':
+            // ข่าวของผู้เล่น (แต่งงาน โดนแย่งตำแหน่ง โดนแกล้ง ฯลฯ) — ถ้าเป็นเรื่องของเราและไม่ดี เน้นสีแดง
+            toast(`${ev.icon} ${ev.text}`, mine ? ev.tone : ev.tone === 'bad' ? 'info' : ev.tone);
+            tick(ev.playerId, `${ev.icon} ${ev.text}`);
+            await sleep(TIMING.action * factor);
+            break;
           default:
             break;
         }

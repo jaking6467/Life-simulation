@@ -7,7 +7,7 @@
 // - คนจริง → รอคำสั่ง ถ้าตั้งเวลาไว้แล้วหมดเวลา ระบบเล่นแทน (ครบ 2 ครั้งติดถือว่า "ไม่อยู่")
 // - หลุดการเชื่อมต่อ → รอให้กลับมาสักพัก แล้วระบบเล่นแทน
 
-import { createGame, performAction, toPublicView, fallbackAction, forceEndTurn, addLog } from './engine.js';
+import { createGame, performAction, toPublicView, fallbackAction, forceEndTurn, addLog, BOT_LEVELS } from './engine.js';
 import { decideActions } from './bot.js';
 import { estimateAnimMs, TIMING, RULES } from './rules.js';
 import { ROLES } from './roles.js';
@@ -31,12 +31,13 @@ export function sanitizeName(name, fallback = 'ผู้เล่น') {
 }
 
 export function normalizeOptions(input = {}, base = {}) {
-  const merged = { maxPlayers: 4, turnSeconds: 120, speed: 2, isPublic: true, weeks: RULES.defaultWeeks, ...base, ...input };
+  const merged = { maxPlayers: 4, turnSeconds: 120, speed: 2, isPublic: true, weeks: RULES.defaultWeeks, botLevel: 'normal', ...base, ...input };
   const maxPlayers = Math.min(4, Math.max(2, Math.round(Number(merged.maxPlayers) || 4)));
   const turnSeconds = TURN_SECONDS.includes(Number(merged.turnSeconds)) ? Number(merged.turnSeconds) : 120;
   const speed = [1, 2, 3].includes(Number(merged.speed)) ? Number(merged.speed) : 2;
   const weeks = RULES.weeksOptions.includes(Number(merged.weeks)) ? Number(merged.weeks) : RULES.defaultWeeks;
-  return { maxPlayers, turnSeconds, speed, isPublic: !!merged.isPublic, weeks };
+  const botLevel = [merged.botLevel, base.botLevel].find((l) => BOT_LEVELS.includes(l)) || 'normal';
+  return { maxPlayers, turnSeconds, speed, isPublic: !!merged.isPublic, weeks, botLevel };
 }
 
 export class Room {
@@ -299,7 +300,7 @@ export class Room {
     this.game = createGame({
       players: this.seats.map((s) => ({ id: s.id, name: s.name, color: s.color, isBot: s.isBot, role: s.role === 'random' ? null : s.role })),
       seed: randomSeed(),
-      options: { weeks: this.options.weeks },
+      options: { weeks: this.options.weeks, botLevel: this.options.botLevel },
     });
     this.turnKey = null;
     this.status = 'playing';

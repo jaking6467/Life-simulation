@@ -22,12 +22,13 @@ export const PETS = Object.freeze({
   dog: { id: 'dog', name: 'สุนัข', icon: '🐶', price: 3500, happiness: 4, note: 'ขยันตาม: ค่าแรง +10%' },
 });
 
-// หุ้น: ราคาเปลี่ยนทุกสิ้นสัปดาห์ (หลังทุกคนเล่นครบ)
+// หุ้น: ราคาเปลี่ยนทุกสิ้นสัปดาห์ (หลังทุกคนเล่นครบ) และขยับตามแรงซื้อขายของผู้เล่น
+// depth = มูลค่าการซื้อขายที่ทำให้ราคาขยับ 100% (ยิ่งน้อย ยิ่งขยับง่าย)
 export const STOCK_LIST = [
-  { id: 'CLUCK', name: 'คลั๊กเกอร์ฟู้ดส์', icon: '🍗', price: 100, vol: 0.08 },
-  { id: 'SIAM', name: 'ธนาคารสยามสยาม', icon: '🏦', price: 150, vol: 0.05 },
-  { id: 'TECH', name: 'ไทยเทคยูนิคอร์น', icon: '🚀', price: 250, vol: 0.16 },
-  { id: 'GOLD', name: 'ทองคำ (กรัม)', icon: '🥇', price: 2000, vol: 0.03 },
+  { id: 'CLUCK', name: 'คลั๊กเกอร์ฟู้ดส์', icon: '🍗', price: 100, vol: 0.08, depth: 150000 },
+  { id: 'SIAM', name: 'ธนาคารสยามสยาม', icon: '🏦', price: 150, vol: 0.05, depth: 300000 },
+  { id: 'TECH', name: 'ไทยเทคยูนิคอร์น', icon: '🚀', price: 250, vol: 0.16, depth: 120000 },
+  { id: 'GOLD', name: 'ทองคำ (กรัม)', icon: '🥇', price: 2000, vol: 0.03, depth: 400000 },
 ];
 export const STOCKS = Object.freeze(Object.fromEntries(STOCK_LIST.map((s) => [s.id, s])));
 

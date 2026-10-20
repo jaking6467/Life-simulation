@@ -2317,3 +2317,56 @@ select:focus {
     flex-direction: column;
   }
 }
+
+/* ---------- ระบบเสริม: ครอบครัว ธุรกิจ ---------- */
+.family-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.love-meter {
+  display: inline-block;
+  vertical-align: middle;
+  width: 52px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.love-meter > span {
+  display: block;
+  height: 100%;
+  background: #ec4899;
+  border-radius: inherit;
+}
+
+.love-meter.is-low > span {
+  background: var(--bad);
+}
+
+.biz-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-right: 8px;
+  font-size: 13px;
+}
+
+.biz-chip .up {
+  color: var(--good);
+}
+
+.biz-chip .down {
+  color: var(--bad);
+}
+
+.rules-more {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}

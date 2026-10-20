@@ -25,8 +25,8 @@ export const LOCATIONS = Object.freeze([
 export const LOCATION_IDS = LOCATIONS.map((l) => l.id);
 export const LOCATION_BY_ID = Object.freeze(Object.fromEntries(LOCATIONS.map((l, i) => [l.id, { ...l, index: i }])));
 export const HOMES = Object.freeze({
-  flat: { id: 'flat', name: 'แฟลตการเคหะ', rent: 600, slots: 4, restBonus: 0, homePoints: 0, theft: 'flat' },
-  condo: { id: 'condo', name: 'คอนโดหรู', rent: 2000, slots: 8, restBonus: 3, homePoints: 2, theft: 'condo' },
+  flat: { id: 'flat', name: 'แฟลตการเคหะ', rent: 600, price: 40000, slots: 4, restBonus: 0, homePoints: 0, theft: 'flat' },
+  condo: { id: 'condo', name: 'คอนโดหรู', rent: 2000, price: 150000, slots: 8, restBonus: 3, homePoints: 2, theft: 'condo' },
 });
 
 export const VEHICLES = Object.freeze({

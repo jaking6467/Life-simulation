@@ -41,6 +41,37 @@ export const RULES = Object.freeze({
   weeklyEventChance: 0.35,
   choiceEventChance: 0.5,
   globalEventChance: 0.5,
+
+  // ตลาด: ซื้อของชิ้นเดียวกันเยอะ ราคาขึ้น (ลดลงครึ่งหนึ่งทุกสัปดาห์) / หุ้นขยับตามแรงซื้อขาย
+  market: { demandStep: 0.1, maxDemand: 0.5, demandDecay: 0.5, stockFee: 0.01 },
+  // ตำแหน่งงานระดับสูงมีจำกัด: คะแนนคุณสมบัติ = ประสบการณ์ + วุฒิ×40 + ชุด×15 คนที่ครองอยู่ได้เปรียบ 30
+  jobs: { slotsTop: 1, slotsMid: 2, eduWeight: 40, clothesWeight: 15, incumbent: 30 },
+  // ซื้อบ้านผ่อนธนาคาร
+  mortgage: { down: 0.2, rate: 0.003, weeks: 24, sellFee: 0.05, growth: 0.004 },
+  // ธุรกิจของตัวเอง
+  business: { maxOwned: 2, maxLevel: 3, manageHours: 4, manageBoost: 1.5, levelBoost: 0.8, sellRatio: 0.6 },
+  // ความรักและครอบครัว
+  family: {
+    meetHours: 2,
+    startAffection: 35,
+    datesPerWeek: 2,
+    proposeWeeks: 3,
+    proposeAffection: 70,
+    weddingCost: 20000,
+    babyCost: 6000,
+    babyAffection: 50,
+    maxKids: 2,
+    kidWeekly: 500,
+    household: 400,
+    decayDating: 6,
+    decayMarried: 4,
+    neglect: 6, // ลดเพิ่มถ้าสัปดาห์นี้ไม่ได้ใช้เวลาด้วยกันเลย
+    breakupHappiness: -15,
+    divorceCost: 10000,
+    divorceHappiness: -25,
+  },
+  // การ์ดแกล้ง/ช่วยเหลือ
+  cards: { hand: 3, perWeek: 1, maxPending: 2, amuletPrice: 1500, amuletMax: 2 },
 });
 
 // หมวดคะแนนประจำสัปดาห์
@@ -51,7 +82,8 @@ export const SCORE_CATEGORIES = Object.freeze([
   { id: 'education', name: 'การศึกษา', icon: '🎓', max: 8 },
   { id: 'career', name: 'อาชีพ', icon: '💼', max: 8 },
   { id: 'wealth', name: 'ความมั่งคั่ง', icon: '💰', max: 8 },
-  { id: 'home', name: 'บ้าน', icon: '🏠', max: 6 },
+  { id: 'home', name: 'บ้าน', icon: '🏠', max: 8 },
+  { id: 'family', name: 'ครอบครัว', icon: '💞', max: 6 },
 ]);
 
 // ช่วงเวลาแอนิเมชัน (มิลลิวินาที) ใช้ร่วมกันทั้งเซิร์ฟเวอร์และหน้าเว็บ
@@ -72,6 +104,7 @@ export function estimateAnimMs(events, speed = 1) {
     if (e.type === 'move') ms += e.path.length * TIMING.step;
     else if (e.type === 'action') ms += TIMING.action;
     else if (e.type === 'event' || e.type === 'globalEvent') ms += TIMING.card;
+    else if (e.type === 'notify') ms += TIMING.action;
     else if (e.type === 'weekend') ms += TIMING.weekend;
   }
   return Math.round(ms / (speed || 1));

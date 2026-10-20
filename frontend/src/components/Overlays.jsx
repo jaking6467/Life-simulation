@@ -4,7 +4,7 @@ import { SCORE_CATEGORIES, formatMoney } from '../lib/game.js';
 // การ์ดเหตุการณ์ (เหตุการณ์ทั้งเมือง / เรื่องให้ตัดสินใจ / หมดสติ) แสดงให้ทุกคนเห็นพร้อมกัน
 export function EventCard({ card, onClose }) {
   if (!card) return null;
-  const kind = card.type === 'globalEvent' ? 'ข่าวทั้งเมือง' : card.kind === 'choice' ? `เรื่องของ ${card.who}` : card.who || '';
+  const kind = card.type === 'globalEvent' ? 'ข่าวทั้งเมือง' : card.kind === 'choice' || card.kind === 'prank' ? `เรื่องของ ${card.who}` : card.who || '';
   return (
     <div className="card-overlay" onClick={onClose} role="presentation">
       <div className={`life-card${card.type === 'globalEvent' ? ' is-global' : ''}`} role="dialog" aria-label={card.name}>

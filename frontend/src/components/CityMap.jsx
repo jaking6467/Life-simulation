@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { LOCATIONS, JOBS, GLOBAL_EVENT_BY_ID, gridPosition, initials, locationName } from '../lib/game.js';
+import { LOCATIONS, JOBS, BUSINESSES, GLOBAL_EVENT_BY_ID, gridPosition, initials, locationName } from '../lib/game.js';
 
 // แผนที่เมือง: อาคาร 18 หลังรอบถนนวงแหวน ตรงกลางเป็นข้อมูลสัปดาห์และผู้เล่นปัจจุบัน
 // แตะอาคาร 1 ครั้งเพื่อดูข้อมูล แตะซ้ำ (หรือกดปุ่มเดินไป) เพื่อเดินทาง
@@ -30,6 +30,7 @@ export function CityMap({ view, tokens, myIds, canMove, selected, onSelect, onMo
         const travel = canMove ? view.travel[loc.id] : null;
         const isHome = viewer && viewer.housing === loc.id;
         const isJob = viewer && JOBS[viewer.job]?.location === loc.id;
+        const biz = viewer ? viewer.businesses.filter((b) => BUSINESSES[b.id].location === loc.id) : [];
         const lucky = viewer?.role === 'mystic' && viewer.horoscope?.lucky === loc.id;
         const unlucky = viewer?.role === 'mystic' && viewer.horoscope?.unlucky === loc.id;
         const closed = view.global.closed === loc.id;
@@ -46,6 +47,9 @@ export function CityMap({ view, tokens, myIds, canMove, selected, onSelect, onMo
             <span className="bldg-badges">
               {isHome && <span title="บ้านของคุณ">🏠</span>}
               {isJob && <span title="ที่ทำงานของคุณ">💼</span>}
+              {biz.map((b) => (
+                <span key={b.id} title={`ธุรกิจของคุณ: ${BUSINESSES[b.id].name}`}>🏪</span>
+              ))}
               {lucky && <span title="ดวงบอกว่าที่นี่นำโชค">🍀</span>}
               {unlucky && <span title="ดวงบอกว่าที่นี่อัปมงคล">💀</span>}
               {closed && <span title="ปิดชั่วคราว">🚧</span>}
