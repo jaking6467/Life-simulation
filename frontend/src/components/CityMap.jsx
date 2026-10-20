@@ -3,7 +3,8 @@ import { LOCATIONS, JOBS, GLOBAL_EVENT_BY_ID, gridPosition, initials, locationNa
 
 // แผนที่เมือง: อาคาร 18 หลังรอบถนนวงแหวน ตรงกลางเป็นข้อมูลสัปดาห์และผู้เล่นปัจจุบัน
 // แตะอาคาร 1 ครั้งเพื่อดูข้อมูล แตะซ้ำ (หรือกดปุ่มเดินไป) เพื่อเดินทาง
-export function CityMap({ view, tokens, myIds, canMove, selected, onSelect, onMove }) {
+// highlight (ไม่บังคับ): รหัสอาคารที่ผู้ช่วยมือใหม่แนะนำให้ไป (หรือ array) จะเรืองแสงบนแผนที่
+export function CityMap({ view, tokens, myIds, canMove, selected, onSelect, onMove, highlight = null }) {
   const current = view.players.find((p) => p.id === view.currentPlayerId);
   const mineTurn = !!current && myIds.includes(current.id);
   const me = view.players.find((p) => myIds.includes(p.id)) || null;
@@ -34,11 +35,12 @@ export function CityMap({ view, tokens, myIds, canMove, selected, onSelect, onMo
         const unlucky = viewer?.role === 'mystic' && viewer.horoscope?.unlucky === loc.id;
         const closed = view.global.closed === loc.id;
         const isCurrentSpot = current && (tokens[current.id] || current.location) === loc.id;
+        const coach = Array.isArray(highlight) ? highlight.includes(loc.id) : highlight === loc.id;
         return (
           <button
             key={loc.id}
             type="button"
-            className={`bldg b-${loc.id}${selected === loc.id ? ' is-selected' : ''}${isCurrentSpot ? ' is-here' : ''}${closed ? ' is-closed' : ''}${travel && !travel.ok ? ' is-far' : ''}`}
+            className={`bldg b-${loc.id}${selected === loc.id ? ' is-selected' : ''}${isCurrentSpot ? ' is-here' : ''}${closed ? ' is-closed' : ''}${travel && !travel.ok ? ' is-far' : ''}${coach ? ' is-coach' : ''}`}
             style={{ gridColumn: col, gridRow: row }}
             onClick={() => (selected === loc.id && canMove && travel?.ok ? onMove(loc.id) : onSelect(loc.id))}
             title={`${loc.name} — ${loc.desc}`}
@@ -50,6 +52,11 @@ export function CityMap({ view, tokens, myIds, canMove, selected, onSelect, onMo
               {unlucky && <span title="ดวงบอกว่าที่นี่อัปมงคล">💀</span>}
               {closed && <span title="ปิดชั่วคราว">🚧</span>}
             </span>
+            {coach && (
+              <span className="bldg-coach-pin" aria-hidden="true">
+                👇
+              </span>
+            )}
             <span className="bldg-icon">{loc.icon}</span>
             <span className="bldg-name">{loc.name}</span>
             {travel && <span className={`bldg-cost${travel.ok ? '' : ' is-bad'}`}>🚶 {travel.hours} ชม.</span>}

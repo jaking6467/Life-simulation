@@ -1,0 +1,470 @@
+/* ===================== ผู้ช่วยมือใหม่ (โค้ช) ===================== */
+:root {
+  --coach: #f59e0b;
+  --coach-soft: #fde68a;
+  --coach-bg: #fffbeb;
+  --coach-ink: #92400e;
+  --coach-glow: rgba(245, 158, 11, 0.55);
+}
+
+.coach {
+  flex: none;
+  background: var(--panel);
+  border: 2px solid var(--coach-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: coach-in 0.25s ease-out;
+}
+
+@keyframes coach-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.coach-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px 2px 8px;
+  background: var(--coach-bg);
+  min-height: 38px;
+}
+
+.coach-headbtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 2px;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--coach-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.coach-logo {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.coach-kicker {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.coach-dots {
+  display: inline-flex;
+  gap: 4px;
+  flex: none;
+}
+
+.coach-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--coach-soft);
+}
+
+.coach-dot.is-done {
+  background: var(--coach);
+}
+
+.coach-dot.is-current {
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--coach);
+}
+
+.coach-peek {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.coach-chev {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.coach-x,
+.coach-tip-x {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.coach-x:hover,
+.coach-tip-x:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.coach-body {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+.coach-step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.coach-step-icon {
+  font-size: 28px;
+  line-height: 1.1;
+  flex: none;
+}
+
+.coach-step-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.coach-step-title {
+  display: block;
+  font-family: var(--font-head);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.coach-step.is-low .coach-step-title {
+  color: var(--warn);
+}
+
+.coach-text {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.coach-why {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.coach-note {
+  margin: 6px 0 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.coach-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 8px;
+}
+
+.coach-actions .btn {
+  min-height: 34px;
+}
+
+.coach-skip {
+  margin-left: auto;
+  padding: 4px 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.coach.is-busy .coach-actions,
+.coach.is-busy .coach-tip .btn {
+  opacity: 0.6;
+}
+
+.coach-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px 6px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.coach-tip-icon {
+  font-size: 18px;
+  flex: none;
+}
+
+.coach-tip-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.coach-tip.tone-bad {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+
+.coach-tip.tone-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.coach-tip.tone-info {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.coach-go-mini {
+  flex: none;
+  white-space: nowrap;
+  background: #fff;
+  border-color: currentColor;
+  color: inherit;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.coach-adv {
+  padding: 8px 10px;
+  border: 1px dashed #c4b5fd;
+  border-radius: 10px;
+  background: #f5f3ff;
+}
+
+.coach-adv-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 14px;
+}
+
+.coach-adv-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--brand-2);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.coach-adv .coach-text {
+  font-size: 13px;
+}
+
+.coach-adv .coach-actions {
+  margin-top: 4px;
+}
+
+.coach-idle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.coach-idle .link-btn {
+  padding: 0;
+  font-size: 13px;
+}
+
+/* ---------- ไฮไลต์บนแผนที่ ---------- */
+.bldg.is-coach {
+  border-color: var(--coach);
+  z-index: 1;
+  animation: coach-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes coach-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--coach-glow), 0 3px 0 #d7cbbb;
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0), 0 3px 0 #d7cbbb;
+  }
+}
+
+.bldg-coach-pin {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  z-index: 3;
+  font-size: 18px;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
+  animation: coach-bob 1s ease-in-out infinite;
+  transform: translate(-50%, 0);
+}
+
+@keyframes coach-bob {
+  0%,
+  100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, -4px);
+  }
+}
+
+/* ---------- ไฮไลต์ปุ่มกิจกรรม ---------- */
+.act-btn.is-coach {
+  position: relative;
+  border-color: var(--coach);
+  background: var(--coach-bg);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+
+.act-btn.is-coach::after {
+  content: '🧭 แนะนำ';
+  position: absolute;
+  top: -9px;
+  right: 10px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--coach);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.btn-end.is-coach {
+  box-shadow: 0 0 0 3px var(--coach-glow), 0 3px 0 #000;
+  animation: coach-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes coach-glow {
+  50% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.15), 0 3px 0 #000;
+  }
+}
+
+/* ---------- ปุ่ม 🧭 บนแถบบน ---------- */
+.coach-toggle {
+  opacity: 0.5;
+  filter: grayscale(0.8);
+}
+
+.coach-toggle.is-on {
+  opacity: 1;
+  filter: none;
+  background: var(--coach-bg);
+  box-shadow: inset 0 0 0 1px var(--coach-soft);
+}
+
+/* ---------- สวิตช์ในหน้าแรก ---------- */
+.coach-switch {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--coach-bg);
+  border: 1px solid var(--coach-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.coach-switch input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  flex: none;
+  accent-color: var(--coach);
+}
+
+.coach-switch span {
+  display: grid;
+  gap: 2px;
+  font-weight: 600;
+  color: var(--coach-ink);
+}
+
+.coach-switch small {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---------- มือถือ ---------- */
+@media (max-width: 860px) {
+  .coach-head {
+    min-height: 36px;
+  }
+
+  .coach-body {
+    gap: 6px;
+    padding: 8px 10px 10px;
+  }
+
+  .coach-step-icon {
+    font-size: 24px;
+  }
+
+  .coach-step-title {
+    font-size: 15px;
+  }
+
+  .coach-text {
+    font-size: 13.5px;
+  }
+
+  .coach-why {
+    font-size: 12px;
+  }
+
+  .bldg-coach-pin {
+    top: -7px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 400px) {
+  .coach-kicker {
+    font-size: 13px;
+  }
+
+  .coach-dots {
+    gap: 3px;
+  }
+
+  .coach-dot {
+    width: 7px;
+    height: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bldg.is-coach,
+  .btn-end.is-coach {
+    animation: none;
+    box-shadow: 0 0 0 4px var(--coach-glow), 0 3px 0 #d7cbbb;
+  }
+
+  .bldg-coach-pin {
+    animation: none;
+  }
+}

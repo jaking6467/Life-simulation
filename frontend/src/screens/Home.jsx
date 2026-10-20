@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Rules } from '../components/Rules.jsx';
+import { TutorialToggle } from '../components/Coach.jsx';
 
 const STATUS_TEXT = {
   connected: { text: 'ออนไลน์', tone: 'good' },
@@ -29,6 +30,7 @@ export function Home({ name, setName, onlineStatus, onCreate, onJoin, onQuick, o
           <span>ชื่อของคุณ</span>
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={16} placeholder="เช่น น้องมิ้นท์" autoFocus={!name} />
         </label>
+        <TutorialToggle />
 
         <section className="home-section">
           <h2>
