@@ -18,6 +18,9 @@ import { GLOBAL_EVENTS, GLOBAL_EVENT_BY_ID, CHOICE_EVENTS, CHOICE_EVENT_BY_ID, W
 import { nextRandom, randInt, shuffle } from './rng.js';
 import { formatMoney as fm } from './format.js';
 
+// รุ่นของรูปแบบ state — เพิ่มเลขนี้เมื่อเปลี่ยนโครงสร้าง state จนเซฟเก่าโหลดแล้วเล่นต่อไม่ได้
+export const STATE_VERSION = 2;
+
 const MAX_LOG = 150;
 const fail = (error) => ({ ok: false, error });
 const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
@@ -33,7 +36,7 @@ export function createGame({ players, seed = 1, options = {} }) {
   if (!Array.isArray(players) || players.length < 1) throw new Error('ต้องมีผู้เล่นอย่างน้อย 1 คน');
   const maxWeeks = RULES.weeksOptions.includes(Number(options.weeks)) ? Number(options.weeks) : RULES.defaultWeeks;
   const state = {
-    version: 2,
+    version: STATE_VERSION,
     status: 'playing',
     seed: seed >>> 0,
     rng: seed >>> 0,

@@ -9,11 +9,14 @@ import { fileURLToPath } from 'node:url';
 import cors from 'cors';
 import { Server } from 'socket.io';
 import { RoomManager, PROTOCOL_EVENTS } from './src/game/roomManager.js';
+import { createPersistence, keepBadFile } from './src/persist.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 3001;
 const CORS_ORIGIN = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()) : '*';
 const STATIC_DIR = process.env.STATIC_DIR || path.resolve(__dirname, '../frontend/build');
+// ไฟล์บันทึกห้องเกม (ตั้ง SAVE_FILE=off เพื่อปิด)
+const SAVE_FILE = process.env.SAVE_FILE === 'off' ? null : path.resolve(process.env.SAVE_FILE || path.join(__dirname, 'data/rooms.json'));
 
 const app = express();
 app.use(cors({ origin: CORS_ORIGIN }));
@@ -22,9 +25,37 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: CORS_ORIGIN, methods: ['GET', 'POST'] } });
 
 const clientRoomName = (clientId) => `client:${clientId}`;
+let persistence = null;
 const manager = new RoomManager({
   send: (clientId, event, payload) => io.to(clientRoomName(clientId)).emit(event, payload),
+  onChange: () => persistence?.markDirty(),
 });
+
+// โหลดห้องที่บันทึกไว้ก่อนเปิดรับผู้เล่น — ผู้เล่นเชื่อมต่อกลับมาด้วย clientId เดิมแล้วเล่นต่อได้เลย
+if (SAVE_FILE) {
+  persistence = createPersistence({ file: SAVE_FILE, snapshot: () => manager, intervalMs: 10000 });
+  const saved = persistence.load();
+  if (saved) {
+    const res = manager.restore(saved);
+    console.log(`💾 โหลดห้องจาก ${SAVE_FILE}: กลับมา ${res.restored} ห้อง${res.skipped ? `, ข้าม ${res.skipped} ห้อง` : ''}`);
+    if (res.errors.length) {
+      console.error('💾 ห้องที่โหลดไม่ได้:', res.errors.slice(0, 20).join(' | '));
+      const bad = keepBadFile(SAVE_FILE, { copy: true });
+      if (bad) console.error(`💾 เก็บสำเนาไฟล์เดิมไว้ที่ ${bad}`);
+    }
+  }
+  persistence.start();
+  let stopping = false;
+  const shutdown = (signal) => {
+    if (stopping) return;
+    stopping = true;
+    const wrote = persistence.flush(true);
+    console.log(`👋 ได้รับ ${signal} — ${wrote ? `บันทึก ${manager.rooms.size} ห้องแล้ว` : 'บันทึกห้องไม่สำเร็จ'} ปิดเซิร์ฟเวอร์`);
+    process.exit(0);
+  };
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+}
 
 app.get('/api/status', (req, res) => {
   res.json({ ok: true, ...manager.stats(), uptime: Math.round(process.uptime()) });

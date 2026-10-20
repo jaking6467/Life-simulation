@@ -80,3 +80,5 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+# ไฟล์บันทึกห้องเกมของเซิร์ฟเวอร์
+backend/data/

@@ -12,6 +12,7 @@ import { decideActions } from './bot.js';
 import { estimateAnimMs, TIMING, RULES } from './rules.js';
 import { ROLES } from './roles.js';
 import { randomSeed } from './rng.js';
+import { SAVE_VERSION, SaveError, validateRoomSave, normalizeSeats, normalizeChat, seatNumber, stripClientIds } from './save.js';
 
 export const SEAT_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899'];
 const BOT_NAMES = ['บอทสมชาย', 'บอทมานี', 'บอทปิติ', 'บอทชูใจ', 'บอทวีระ', 'บอทมานะ', 'บอทดวงใจ', 'บอทเพชร'];
@@ -565,6 +566,73 @@ export class Room {
     this.send(clientId, 'room', this.roomView(clientId));
     this.sendChatHistory(clientId);
     this.send(clientId, 'game', this.game ? this.gamePayload([], true) : null);
+  }
+
+  // ---------- บันทึก / โหลดเกม ----------
+
+  // ข้อมูลห้องแบบ JSON (อ้างอิงสถานะจริง ใช้กับ JSON.stringify ทันทีเท่านั้น)
+  toJSON() {
+    return {
+      saveVersion: SAVE_VERSION,
+      savedAt: Date.now(),
+      code: this.code,
+      offline: this.offline,
+      options: this.options,
+      seats: this.seats.map(({ chatTimes, ...seat }) => seat),
+      hostClientId: this.hostClientId,
+      status: this.status,
+      game: this.game,
+      chat: this.chat,
+      chatSeq: this.chatSeq,
+      seatSeq: this.seatSeq,
+    };
+  }
+
+  // สำเนาแยกจากสถานะจริง เก็บไว้ได้นานโดยไม่เปลี่ยนตามเกม
+  serialize() {
+    return JSON.parse(JSON.stringify(this));
+  }
+
+  // เซฟสำหรับดาวน์โหลด: ออนไลน์จะเอารหัสเครื่องของทุกคนออก และสุ่มตัวสุ่มใหม่ (ไฟล์ไม่บอกอนาคตของเกมออนไลน์)
+  exportSave(clientId) {
+    if (!this.hasClient(clientId)) return { ok: false, error: 'คุณไม่ได้อยู่ในห้องนี้' };
+    if (!this.game) return { ok: false, error: 'ยังไม่ได้เริ่มเกม ยังไม่มีอะไรให้บันทึก' };
+    const save = this.serialize();
+    if (!this.offline) {
+      stripClientIds(save);
+      save.game.rng = randomSeed();
+    }
+    return { ok: true, save };
+  }
+
+  // สร้างห้องจากเซฟ — โยน SaveError (ข้อความภาษาไทย) ถ้าเซฟใช้ไม่ได้
+  static restore(input, { scheduler, send, offline = false, onClientLeft, onEmpty }) {
+    const problem = validateRoomSave(input);
+    if (problem) throw new SaveError(problem);
+    const data = JSON.parse(JSON.stringify(input));
+    const room = new Room({ code: data.code, options: data.options, scheduler, send, offline, onClientLeft, onEmpty });
+    room.seats = normalizeSeats(data.seats, { offline, fallbackColors: SEAT_COLORS });
+    if (offline) {
+      // คนที่โหลดเซฟอยู่หน้าเครื่องแน่นอน ไม่ต้องถือว่า "ไม่อยู่"
+      for (const s of room.seats) {
+        s.away = false;
+        s.afk = 0;
+      }
+    }
+    const humans = room.seats.filter((s) => s.clientId);
+    room.hostClientId = humans.some((s) => s.clientId === data.hostClientId)
+      ? data.hostClientId
+      : (humans.find((s) => !s.local) || humans[0]).clientId;
+    room.status = data.status;
+    room.game = data.status === 'lobby' ? null : data.game;
+    room.chat = normalizeChat(data.chat);
+    const maxSeat = Math.max(0, ...room.seats.map((s) => seatNumber(s.id)));
+    const maxChat = Math.max(0, ...room.chat.map((m) => m.id));
+    room.seatSeq = Math.max(Number.isInteger(data.seatSeq) ? data.seatSeq : 0, maxSeat);
+    room.chatSeq = Math.max(Number.isInteger(data.chatSeq) ? data.chatSeq : 0, maxChat);
+    if (room.game) room.game.events = [];
+    if (room.status === 'playing') room.schedule(0, true);
+    return room;
   }
 
   isAbandoned(now, idleMs) {

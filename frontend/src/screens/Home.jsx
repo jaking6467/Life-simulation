@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Rules } from '../components/Rules.jsx';
+import { SavedGames } from '../components/SavedGames.jsx';
 
 const STATUS_TEXT = {
   connected: { text: 'ออนไลน์', tone: 'good' },
@@ -9,7 +10,7 @@ const STATUS_TEXT = {
   idle: { text: 'ไม่ได้เชื่อมต่อ', tone: 'bad' },
 };
 
-export function Home({ name, setName, onlineStatus, onCreate, onJoin, onQuick, onOffline, initialCode }) {
+export function Home({ name, setName, onlineStatus, onCreate, onJoin, onQuick, onOffline, onLoadSave, onNotice, initialCode }) {
   const [code, setCode] = useState(initialCode || '');
   const [showRules, setShowRules] = useState(false);
   const online = onlineStatus === 'connected';
@@ -29,6 +30,8 @@ export function Home({ name, setName, onlineStatus, onCreate, onJoin, onQuick, o
           <span>ชื่อของคุณ</span>
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={16} placeholder="เช่น น้องมิ้นท์" autoFocus={!name} />
         </label>
+
+        <SavedGames onLoad={onLoadSave} onError={onNotice} />
 
         <section className="home-section">
           <h2>
