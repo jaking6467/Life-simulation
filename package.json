@@ -1,0 +1,13 @@
+{
+  "name": "life-simulation",
+  "version": "2.0.0",
+  "private": true,
+  "description": "เส้นทางชีวิต — เกมกระดานจำลองชีวิตแบบผลัดกันเล่น 2–4 คน",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix backend start",
+    "test": "npm --prefix backend test",
+    "simulate": "npm --prefix backend run simulate"
+  }
+}

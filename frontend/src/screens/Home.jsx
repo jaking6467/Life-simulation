@@ -1,0 +1,83 @@
+import { useState } from 'react';
+import { Rules } from '../components/Rules.jsx';
+import { SavedGames } from '../components/SavedGames.jsx';
+import { TutorialToggle } from '../components/Coach.jsx';
+
+const STATUS_TEXT = {
+  connected: { text: 'ออนไลน์', tone: 'good' },
+  connecting: { text: 'กำลังเชื่อมต่อ', tone: 'warn' },
+  disconnected: { text: 'หลุดการเชื่อมต่อ', tone: 'bad' },
+  error: { text: 'ออฟไลน์', tone: 'bad' },
+  idle: { text: 'ออฟไลน์', tone: 'bad' },
+};
+
+export function Home({ name, setName, onlineStatus, onCreate, onJoin, onQuick, onOffline, onLoadSave, onNotice, initialCode }) {
+  const [code, setCode] = useState(initialCode || '');
+  const [showRules, setShowRules] = useState(false);
+  const online = onlineStatus === 'connected';
+  const nameOk = name.trim().length > 0;
+  const st = STATUS_TEXT[onlineStatus] || STATUS_TEXT.idle;
+
+  return (
+    <div className="home">
+      <div className="home-card">
+        <header className="home-head">
+          <span className="home-mark" aria-hidden="true">
+            🏙️
+          </span>
+          <h1>เส้นทางชีวิต</h1>
+          <p className="tagline">เกมจำลองชีวิต ผลัดกันเล่นคนละสัปดาห์ 2–4 คน ทำงาน เรียน มีครอบครัว ใครใช้ชีวิตได้ดีที่สุดชนะ</p>
+        </header>
+
+        <label className="field">
+          <span>ชื่อของคุณ</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={16} placeholder="เช่น น้องมิ้นท์" autoFocus={!name} />
+        </label>
+
+        <SavedGames onLoad={onLoadSave} onError={onNotice} />
+
+        <section className="home-section">
+          <h2>เล่นบนเครื่องนี้</h2>
+          <p className="muted small">เล่นกับบอท หรือผลัดกันเล่นหลายคนบนเครื่องเดียว ไม่ต้องใช้เน็ต</p>
+          <button type="button" className="btn btn-primary btn-block" disabled={!nameOk} onClick={onOffline}>
+            เริ่มเล่นออฟไลน์
+          </button>
+        </section>
+
+        <section className="home-section">
+          <h2>
+            เล่นออนไลน์กับเพื่อน <span className={`pill pill-${st.tone}`}>{st.text}</span>
+          </h2>
+          <div className="btn-row">
+            <button type="button" className="btn" disabled={!online || !nameOk} onClick={onCreate}>
+              สร้างห้อง
+            </button>
+            <button type="button" className="btn" disabled={!online || !nameOk} onClick={onQuick}>
+              จับคู่ด่วน
+            </button>
+          </div>
+          <form
+            className="join-row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onJoin(code.trim());
+            }}
+          >
+            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="รหัสห้อง 5 ตัว" maxLength={5} aria-label="รหัสห้อง" />
+            <button type="submit" className="btn" disabled={!online || !nameOk || code.trim().length < 5}>
+              เข้าห้อง
+            </button>
+          </form>
+          {!online && <p className="muted small">{onlineStatus === 'connecting' ? 'กำลังเชื่อมต่อเซิร์ฟเวอร์…' : 'ยังเชื่อมต่อเซิร์ฟเวอร์ไม่ได้ เล่นออฟไลน์ไปก่อนได้'}</p>}
+        </section>
+
+        <TutorialToggle />
+
+        <button type="button" className="link-btn" onClick={() => setShowRules((s) => !s)} aria-expanded={showRules}>
+          {showRules ? 'ซ่อนวิธีเล่น' : 'วิธีเล่น'}
+        </button>
+        {showRules && <Rules />}
+      </div>
+    </div>
+  );
+}

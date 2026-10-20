@@ -1,23 +1,21 @@
 {
   "name": "life-sim-backend",
-  "version": "1.0.0",
-  "description": "Life Simulation Multiplayer Game Backend",
+  "version": "2.0.0",
+  "description": "Life Simulation — เกมกระดานเส้นทางชีวิตแบบผลัดกันเล่น (Socket.io server)",
   "main": "server.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "node --watch server.js",
+    "test": "node --test",
+    "simulate": "node scripts/simulate.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.6.1",
     "cors": "^2.8.5",
-    "uuid": "^9.0.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   }
 }
