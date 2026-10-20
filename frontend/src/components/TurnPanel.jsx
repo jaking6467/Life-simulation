@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CHOICE_EVENT_BY_ID, LOCATION_BY_ID, formatMoney, locationName, phaseText, turnsUntil } from '../lib/game.js';
+import { matchAction } from '../lib/coach.js';
 
-export function TurnPanel({ view, room, myIds, act, busy, deadline, turnSeconds, ticker, onComeBack }) {
+// highlightAction (ไม่บังคับ): { action, params } ปุ่มที่ผู้ช่วยมือใหม่แนะนำ ('endTurn' = ปุ่มจบสัปดาห์)
+export function TurnPanel({ view, room, myIds, act, busy, deadline, turnSeconds, ticker, onComeBack, highlightAction = null }) {
   const current = view.players.find((p) => p.id === view.currentPlayerId);
   const finished = view.status === 'finished';
   const mineTurn = !!current && myIds.includes(current.id);
@@ -26,7 +28,7 @@ export function TurnPanel({ view, room, myIds, act, busy, deadline, turnSeconds,
       </header>
 
       {canAct && view.phase.type === 'choice' && <ChoicePanel view={view} act={act} />}
-      {canAct && view.phase.type === 'week' && <LocationPanel view={view} me={current} act={act} multiLocal={multiLocal} />}
+      {canAct && view.phase.type === 'week' && <LocationPanel view={view} me={current} act={act} multiLocal={multiLocal} highlightAction={highlightAction} />}
       {mineTurn && busy && !finished && <p className="hint muted">กำลังแสดงผล…</p>}
       {away && !finished && (
         <div className="away-box">
@@ -63,7 +65,7 @@ function ChoicePanel({ view, act }) {
   );
 }
 
-function LocationPanel({ view, me, act, multiLocal }) {
+function LocationPanel({ view, me, act, multiLocal, highlightAction }) {
   const loc = LOCATION_BY_ID[me.location];
   const [showDisabled, setShowDisabled] = useState(false);
   const ref = useRef(null);
@@ -116,7 +118,7 @@ function LocationPanel({ view, me, act, multiLocal }) {
               <button
                 key={`${a.action}:${JSON.stringify(a.params)}`}
                 type="button"
-                className="act-btn"
+                className={`act-btn${matchAction(a, highlightAction) ? ' is-coach' : ''}`}
                 disabled={a.disabled}
                 onClick={() => act({ type: 'act', action: a.action, params: a.params })}
                 title={a.reason || a.desc}
@@ -141,7 +143,7 @@ function LocationPanel({ view, me, act, multiLocal }) {
         </button>
       )}
 
-      <button type="button" className="btn btn-end" onClick={endWeek}>
+      <button type="button" className={`btn btn-end${highlightAction?.action === 'endTurn' ? ' is-coach' : ''}`} onClick={endWeek}>
         🌙 จบสัปดาห์ (ส่งตาให้คนถัดไป)
       </button>
     </div>

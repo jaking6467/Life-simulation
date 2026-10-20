@@ -9,6 +9,7 @@ import { EventCard, WeekendCard, Toasts } from '../components/Overlays.jsx';
 import { Results } from '../components/Results.jsx';
 import { Rules } from '../components/Rules.jsx';
 import { SaveMenu } from '../components/SaveMenu.jsx';
+import { Coach, useCoach } from '../components/Coach.jsx';
 import { chime } from '../lib/sound.js';
 import { initials } from '../lib/game.js';
 
@@ -24,6 +25,7 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
   const myIds = room.you;
   const playback = usePlayback(feed, { speed: room.options.speed, myIds });
   const { view, card, weekend, tokens, toasts, ticker, busy, deadline, turnSeconds, dismissCard, dismissWeekend } = playback;
+  const coach = useCoach({ view, room, myIds });
   const [tab, setTab] = useState('log');
   const [feedTab, setFeedTab] = useState('log');
   const [selected, setSelected] = useState(null);
@@ -128,6 +130,9 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
           })}
         </div>
         <div className="topbar-actions">
+          <button type="button" className={`icon-btn coach-toggle${coach.enabled ? ' is-on' : ''}`} onClick={coach.toggle} title={coach.enabled ? 'ปิดคำแนะนำมือใหม่' : 'เปิดคำแนะนำมือใหม่'} aria-label="คำแนะนำมือใหม่" aria-pressed={coach.enabled}>
+            🧭
+          </button>
           <button type="button" className="icon-btn" onClick={() => setShowRules(true)} title="วิธีเล่น" aria-label="วิธีเล่น">
             📖
           </button>
@@ -149,10 +154,11 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
         </aside>
 
         <main className="col-main">
-          <CityMap view={view} tokens={tokens} myIds={myIds} canMove={canMove} selected={selected} onSelect={setSelected} onMove={move} />
+          <CityMap view={view} tokens={tokens} myIds={myIds} canMove={canMove} selected={selected} onSelect={setSelected} onMove={move} highlight={coach.highlight} />
         </main>
 
         <aside className="col-right">
+          <Coach coach={coach} canMove={canMove} busy={waiting} onMove={move} />
           <TurnPanel
             view={view}
             room={room}
@@ -163,6 +169,7 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
             turnSeconds={turnSeconds}
             ticker={ticker}
             onComeBack={() => send('room:back')}
+            highlightAction={coach.highlightAction}
           />
           <nav className="mobile-tabs" aria-label="เมนู">
             {MOBILE_TABS.map(([id, label]) => (
