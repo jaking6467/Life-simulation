@@ -82,3 +82,6 @@ yarn-error.log*
 lerna-debug.log*
 # สำเนาโค้ดชั่วคราวของผู้ช่วย (git worktree)
 .claude/worktrees/
+
+# ไฟล์บันทึกห้องเกมของเซิร์ฟเวอร์
+backend/data/

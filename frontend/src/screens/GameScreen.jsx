@@ -8,6 +8,7 @@ import { ChatPanel } from '../components/ChatPanel.jsx';
 import { EventCard, WeekendCard, Toasts } from '../components/Overlays.jsx';
 import { Results } from '../components/Results.jsx';
 import { Rules } from '../components/Rules.jsx';
+import { SaveMenu } from '../components/SaveMenu.jsx';
 import { chime } from '../lib/sound.js';
 import { initials } from '../lib/game.js';
 
@@ -28,6 +29,8 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
   const [selected, setSelected] = useState(null);
   const [showResults, setShowResults] = useState(true);
   const [showRules, setShowRules] = useState(false);
+  const [showSave, setShowSave] = useState(false);
+  const closeSave = useCallback(() => setShowSave(false), []);
   const [seenChat, setSeenChat] = useState(chat.length);
   const [pendingSeq, setPendingSeq] = useState(null);
   const chimed = useRef('');
@@ -93,7 +96,10 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
   };
 
   const leave = () => {
-    if (view.status !== 'playing' || window.confirm('ออกจากเกมนี้? บอทจะเล่นแทนคุณจนจบเกม')) onLeave();
+    const ask = room.offline
+      ? 'ออกจากเกมนี้? เกมบันทึกไว้แล้ว กลับมาเล่นต่อได้จากหน้าแรก (💾 เล่นต่อ)'
+      : 'ออกจากเกมนี้? บอทจะเล่นแทนคุณจนจบเกม';
+    if (view.status !== 'playing' || window.confirm(ask)) onLeave();
   };
 
   const feedPanel =
@@ -124,6 +130,9 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
         <div className="topbar-actions">
           <button type="button" className="icon-btn" onClick={() => setShowRules(true)} title="วิธีเล่น" aria-label="วิธีเล่น">
             📖
+          </button>
+          <button type="button" className="icon-btn" onClick={() => setShowSave(true)} title="บันทึกเกม" aria-label="บันทึกเกม">
+            💾
           </button>
           <button type="button" className="icon-btn" onClick={() => setMuted((m) => !m)} title={muted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'} aria-label="เสียงแจ้งเตือน">
             {muted ? '🔇' : '🔔'}
@@ -197,6 +206,8 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
           🏆 ดูผลอันดับ
         </button>
       )}
+
+      {showSave && <SaveMenu room={room} send={send} onClose={closeSave} />}
 
       {showRules && (
         <div className="modal-back" onClick={() => setShowRules(false)} role="presentation">

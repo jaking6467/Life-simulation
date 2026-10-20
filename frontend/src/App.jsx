@@ -3,6 +3,7 @@ import { createOnlineConnection } from './net/online.js';
 import { createOfflineConnection } from './net/offline.js';
 import { useConnectionState } from './hooks/useConnectionState.js';
 import { getClientId, load, save } from './lib/storage.js';
+import { unfinishedAutosave, isSameSave, weekText } from './lib/saves.js';
 import { Home } from './screens/Home.jsx';
 import { Lobby } from './screens/Lobby.jsx';
 import { GameScreen } from './screens/GameScreen.jsx';
@@ -62,13 +63,43 @@ export default function App() {
   const off = useConnectionState(offline, showNotice);
   const active = offline && off.room ? { conn: offline, ...off } : { conn: online, ...on };
 
-  // สร้างห้องออฟไลน์หลังจากเริ่มฟังข้อความแล้ว (effect ของ hook ด้านบนทำงานก่อน)
+  // เริ่มโหมดออฟไลน์: สร้างห้องใหม่ หรือโหลดเกมจากเซฟ ({ save })
+  const offlineIntent = useRef(null);
+  const startOffline = (intent = null) => {
+    offlineIntent.current = intent;
+    offline?.close();
+    setOffline(createOfflineConnection());
+  };
+
+  // เกมที่เล่นค้างไว้จะถูกแทนที่ด้วยเกมใหม่/เกมที่โหลด — ถามก่อน (ยกเว้นกำลังโหลดเกมนั้นเอง)
+  const confirmReplaceAutosave = (nextSave = null) => {
+    const auto = unfinishedAutosave();
+    if (!auto || (nextSave && isSameSave(auto.summary, nextSave))) return true;
+    const who = auto.summary.players.map((p) => p.name).join(', ');
+    return window.confirm(
+      `มีเกมที่เล่นค้างไว้ (${weekText(auto.summary)} · ${who})\n` +
+        `${nextSave ? 'ถ้าโหลดเซฟนี้' : 'ถ้าเริ่มเกมใหม่'} เกมที่ค้างไว้จะถูกแทนที่ (ถ้าอยากเก็บไว้ ให้กดยกเลิก แล้วเข้าไปบันทึกลงช่องก่อน)\n\n` +
+        `${nextSave ? 'โหลดเซฟนี้เลยไหม?' : 'เริ่มเกมใหม่เลยไหม?'}`,
+    );
+  };
+
+  // สร้าง/โหลดห้องออฟไลน์หลังจากเริ่มฟังข้อความแล้ว (effect ของ hook ด้านบนทำงานก่อน)
   const offlineHadRoom = useRef(false);
   useEffect(() => {
     if (!offline) return;
     offlineHadRoom.current = false;
-    offline.request('room:create', { name: name.trim() || 'ผู้เล่น' }).then((res) => {
-      if (!res.ok) showNotice(res.error);
+    const intent = offlineIntent.current;
+    offlineIntent.current = null;
+    const req = intent?.save
+      ? offline.request('room:load', { save: intent.save })
+      : offline.request('room:create', { name: name.trim() || 'ผู้เล่น' });
+    req.then((res) => {
+      if (res.ok) return;
+      showNotice(res.error);
+      if (intent?.save) {
+        offline.close();
+        setOffline((cur) => (cur === offline ? null : cur));
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offline]);
@@ -110,7 +141,9 @@ export default function App() {
         onCreate={() => onlineRequest('room:create', { options: {} })}
         onQuick={() => onlineRequest('room:quick', {})}
         onJoin={(code) => onlineRequest('room:join', { code })}
-        onOffline={() => setOffline(createOfflineConnection())}
+        onOffline={() => confirmReplaceAutosave() && startOffline()}
+        onLoadSave={(s) => confirmReplaceAutosave(s) && startOffline({ save: s })}
+        onNotice={showNotice}
       />
     );
   } else if (active.room.status === 'lobby') {
