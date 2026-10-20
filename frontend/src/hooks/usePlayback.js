@@ -1,17 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
-import { TIMING, formatMoney } from '../lib/game.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { TIMING } from '../lib/game.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 let keySeq = 0;
 
-// เล่นแอนิเมชันของแต่ละอัปเดต (หมุนวงล้อ → เดินทีละช่อง → เปิดการ์ด) แล้วค่อยแสดงสถานะใหม่
-// ถ้าอัปเดตค้างในคิวหลายอัน (เช่นสลับแท็บไปนาน) จะเล่นเร็วขึ้นเพื่อตามให้ทัน
+// เล่นแอนิเมชันของแต่ละอัปเดต (เดินผ่านอาคารทีละหลัง → ทำกิจกรรม → การ์ดเหตุการณ์ → สรุปสุดสัปดาห์)
+// แล้วค่อยแสดงสถานะใหม่ ถ้าอัปเดตค้างในคิวหลายอัน (เช่นสลับแท็บไปนาน) จะเล่นเร็วขึ้นเพื่อตามให้ทัน
 export function usePlayback(feed, { speed = 1, myIds = [] } = {}) {
   const [snapshot, setSnapshot] = useState(() => toSnapshot(feed.latest));
-  const [spin, setSpin] = useState(null);
   const [card, setCard] = useState(null);
+  const [weekend, setWeekend] = useState(null);
   const [tokens, setTokens] = useState({});
   const [toasts, setToasts] = useState([]);
+  const [ticker, setTicker] = useState([]);
   const [busy, setBusy] = useState(false);
   const speedRef = useRef(speed);
   const mineRef = useRef(myIds);
@@ -25,8 +26,9 @@ export function usePlayback(feed, { speed = 1, myIds = [] } = {}) {
     const toast = (text, tone) => {
       const id = ++keySeq;
       setToasts((list) => [...list.slice(-3), { id, text, tone }]);
-      setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), 3200);
+      setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), 3500);
     };
+    const tick = (playerId, text) => setTicker((list) => [...list.slice(-5), { id: ++keySeq, playerId, text }]);
 
     const apply = (u) => {
       setSnapshot(toSnapshot(u));
@@ -40,36 +42,34 @@ export function usePlayback(feed, { speed = 1, myIds = [] } = {}) {
         if (cancelled) return;
         const mine = mineRef.current.includes(ev.playerId);
         switch (ev.type) {
-          case 'spin':
-            setSpin({ key: ++keySeq, ...ev, name: names[ev.playerId] });
-            await sleep((ev.purpose === 'move' ? TIMING.spin : TIMING.subSpin) * factor);
-            break;
           case 'move':
-            for (const spaceId of ev.path) {
+            for (const loc of ev.path) {
               if (cancelled) return;
-              setTokens((t) => ({ ...t, [ev.playerId]: spaceId }));
+              setTokens((t) => ({ ...t, [ev.playerId]: loc }));
               await sleep(TIMING.step * factor);
             }
             break;
-          case 'card':
-            setCard({ key: ++keySeq, ...ev, name: names[ev.playerId] });
+          case 'action':
+            tick(ev.playerId, ev.text);
+            if (mine) toast(ev.text, 'info');
+            await sleep(TIMING.action * factor);
+            break;
+          case 'event':
+          case 'globalEvent':
+            setCard({ key: ++keySeq, ...ev, name: ev.name, who: names[ev.playerId] || null });
             await sleep(TIMING.card * factor);
             setCard(null);
             break;
-          case 'retire':
-            await sleep(TIMING.retire * factor);
+          case 'weekend':
+            tick(ev.playerId, `จบสัปดาห์ที่ ${ev.week} ได้ ${ev.points} คะแนน`);
+            if (mine) setWeekend({ key: ++keySeq, ...ev, who: names[ev.playerId] });
+            await sleep(TIMING.weekend * factor);
             break;
-          case 'money':
-            if (mine) toast(`${ev.amount > 0 ? '+' : ''}${formatMoney(ev.amount)} · ${ev.reason}`, ev.amount > 0 ? 'good' : 'bad');
+          case 'quest':
+            toast(`🏅 ${names[ev.playerId]} ทำภารกิจสำเร็จ +${ev.points} คะแนน`, 'good');
             break;
-          case 'life':
-            if (mine) toast(`⭐ ได้บัตรความสุข ${ev.count} ใบ`, 'good');
-            break;
-          case 'insured':
-            if (mine) toast('🛡️ ประกันจ่ายแทนให้แล้ว!', 'good');
-            break;
-          case 'loan':
-            if (mine && ev.auto) toast(`🏦 กู้ธนาคารอัตโนมัติ ${ev.count} สัญญา`, 'bad');
+          case 'lottery':
+            toast(`🎟️ ผลลอตเตอรี่: ${ev.text}`, 'info');
             break;
           default:
             break;
@@ -107,7 +107,9 @@ export function usePlayback(feed, { speed = 1, myIds = [] } = {}) {
     };
   }, [feed]);
 
-  return { ...snapshot, spin, card, tokens, toasts, busy, dismissCard: () => setCard(null) };
+  const dismissCard = useCallback(() => setCard(null), []);
+  const dismissWeekend = useCallback(() => setWeekend(null), []);
+  return { ...snapshot, card, weekend, tokens, toasts, ticker, busy, dismissCard, dismissWeekend };
 }
 
 function toSnapshot(u) {

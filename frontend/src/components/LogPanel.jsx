@@ -6,7 +6,7 @@ export function LogPanel({ log, players }) {
         <li key={l.id} className={`log-item tone-${l.tone}`}>
           <span className="dot" style={{ background: colors[l.playerId] || '#cbd5e1' }} />
           <span className="log-text">{l.text}</span>
-          <span className="log-round">ร.{l.round}</span>
+          <span className="log-round">สัปดาห์ {l.week}</span>
         </li>
       ))}
     </ol>

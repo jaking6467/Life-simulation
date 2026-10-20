@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { ChatPanel } from '../components/ChatPanel.jsx';
 import { Rules } from '../components/Rules.jsx';
-import { initials } from '../lib/game.js';
+import { ROLE_LIST, ROLES, RULES, initials } from '../lib/game.js';
 
 const TURN_OPTIONS = [
   [0, 'ไม่จำกัดเวลา'],
-  [30, '30 วินาที'],
-  [45, '45 วินาที'],
-  [60, '60 วินาที'],
-  [90, '90 วินาที'],
+  [60, '1 นาที'],
+  [90, '1 นาทีครึ่ง'],
   [120, '2 นาที'],
+  [180, '3 นาที'],
+  [300, '5 นาที'],
 ];
 
 export function Lobby({ room, chat, send, onLeave }) {
@@ -69,6 +69,7 @@ export function Lobby({ room, chat, send, onLeave }) {
                 {room.you.includes(s.id) && <span className="tag tag-me">คุณ</span>} {s.isBot && <span className="tag">บอท</span>}{' '}
                 {s.local && <span className="tag">เครื่องนี้</span>} {!s.connected && <span className="tag tag-bad">หลุด</span>}
               </span>
+              <RolePicker room={room} seat={s} send={send} />
               <span className={`ready${s.ready || s.isHost ? ' is-ready' : ''}`}>{s.isHost ? 'เจ้าของห้อง' : s.ready ? 'พร้อม ✓' : 'ยังไม่พร้อม'}</span>
               {room.isHost && !s.isHost && (
                 <button type="button" className="icon-btn" onClick={() => send('room:removeSeat', { seatId: s.id })} aria-label={`นำ ${s.name} ออก`}>
@@ -118,7 +119,17 @@ export function Lobby({ room, chat, send, onLeave }) {
             </select>
           </label>
           <label>
-            <span>เวลาตัดสินใจแต่ละครั้ง</span>
+            <span>ความยาวเกม</span>
+            <select disabled={!room.isHost} value={room.options.weeks} onChange={(e) => setOpt({ weeks: Number(e.target.value) })}>
+              {RULES.weeksOptions.map((w) => (
+                <option key={w} value={w}>
+                  {w} สัปดาห์
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>เวลาเล่นต่อ 1 สัปดาห์ (เวลาจริง)</span>
             <select disabled={!room.isHost} value={room.options.turnSeconds} onChange={(e) => setOpt({ turnSeconds: Number(e.target.value) })}>
               {TURN_OPTIONS.map(([v, label]) => (
                 <option key={v} value={v}>
@@ -130,8 +141,9 @@ export function Lobby({ room, chat, send, onLeave }) {
           <label>
             <span>ความเร็วแอนิเมชัน</span>
             <select disabled={!room.isHost} value={room.options.speed} onChange={(e) => setOpt({ speed: Number(e.target.value) })}>
-              <option value={1}>ปกติ</option>
-              <option value={2}>เร็ว ×2</option>
+              <option value={1}>ช้า (ดูบอทเดินชัด ๆ)</option>
+              <option value={2}>ปกติ</option>
+              <option value={3}>เร็วมาก</option>
             </select>
           </label>
           {!room.offline && (
@@ -155,6 +167,8 @@ export function Lobby({ room, chat, send, onLeave }) {
           <p className="muted small">{status}</p>
         </div>
 
+        <RoleGuide />
+
         {!room.offline && (
           <div className="lobby-chat">
             <h3>💬 แชท</h3>
@@ -167,6 +181,54 @@ export function Lobby({ room, chat, send, onLeave }) {
         </button>
         {showRules && <Rules />}
       </div>
+    </div>
+  );
+}
+
+function RolePicker({ room, seat, send }) {
+  const mine = room.you.includes(seat.id) || (seat.isBot && room.isHost);
+  const taken = new Set(room.seats.filter((x) => x.id !== seat.id).map((x) => x.role));
+  if (!mine) {
+    const r = ROLES[seat.role];
+    return <span className="role-chip">{r ? `${r.icon} ${r.name}` : '🎲 สุ่มบทบาท'}</span>;
+  }
+  return (
+    <select className="role-select" value={seat.role} onChange={(e) => send('room:role', { seatId: seat.id, role: e.target.value })} aria-label={`บทบาทของ ${seat.name}`}>
+      <option value="random">🎲 สุ่มบทบาท</option>
+      {ROLE_LIST.map((r) => (
+        <option key={r.id} value={r.id} disabled={taken.has(r.id)}>
+          {r.icon} {r.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function RoleGuide() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="role-guide">
+      <button type="button" className="link-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        {open ? 'ซ่อนรายละเอียดบทบาท ▲' : '🎭 ดูรายละเอียดบทบาททั้ง 8 แบบ ▼'}
+      </button>
+      {open && (
+        <div className="roles-grid">
+          {ROLE_LIST.map((r) => (
+            <div key={r.id} className="role-card">
+              <b>
+                {r.icon} {r.name}
+              </b>
+              <p className="muted">{r.desc}</p>
+              <ul>
+                {r.perks.map((perk) => (
+                  <li key={perk}>{perk}</li>
+                ))}
+              </ul>
+              <p className="small">🏅 ภารกิจ: {r.quests.map((q) => `${q.text} (+${q.points})`).join(' · ')}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

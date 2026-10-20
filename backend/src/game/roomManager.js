@@ -12,6 +12,7 @@ export const PROTOCOL_EVENTS = [
   'room:quick',
   'room:leave',
   'room:ready',
+  'room:role',
   'room:addBot',
   'room:addLocal',
   'room:removeSeat',
@@ -80,6 +81,8 @@ export class RoomManager {
         }
         case 'room:ready':
           return this.withRoom(clientId, (r) => r.setReady(clientId, data.ready !== false));
+        case 'room:role':
+          return this.withRoom(clientId, (r) => r.setRole(clientId, String(data.seatId || ''), String(data.role || '')));
         case 'room:addBot':
           return this.withRoom(clientId, (r) => r.addBot(clientId));
         case 'room:addLocal':

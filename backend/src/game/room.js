@@ -9,12 +9,14 @@
 
 import { createGame, performAction, toPublicView, fallbackAction, forceEndTurn, addLog } from './engine.js';
 import { decideActions } from './bot.js';
-import { estimateAnimMs, TIMING } from './rules.js';
+import { estimateAnimMs, TIMING, RULES } from './rules.js';
+import { ROLES } from './roles.js';
 import { randomSeed } from './rng.js';
 
 export const SEAT_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899'];
 const BOT_NAMES = ['บอทสมชาย', 'บอทมานี', 'บอทปิติ', 'บอทชูใจ', 'บอทวีระ', 'บอทมานะ', 'บอทดวงใจ', 'บอทเพชร'];
-const TURN_SECONDS = [0, 30, 45, 60, 90, 120];
+const TURN_SECONDS = [0, 60, 90, 120, 180, 300];
+const MAX_BOT_STEPS_PER_TURN = 80;
 const DISCONNECT_GRACE_MS = 20000;
 const AFK_LIMIT = 2;
 const MAX_CHAT = 100;
@@ -29,11 +31,12 @@ export function sanitizeName(name, fallback = 'ผู้เล่น') {
 }
 
 export function normalizeOptions(input = {}, base = {}) {
-  const merged = { maxPlayers: 4, turnSeconds: 60, speed: 1, isPublic: true, ...base, ...input };
+  const merged = { maxPlayers: 4, turnSeconds: 120, speed: 2, isPublic: true, weeks: RULES.defaultWeeks, ...base, ...input };
   const maxPlayers = Math.min(4, Math.max(2, Math.round(Number(merged.maxPlayers) || 4)));
-  const turnSeconds = TURN_SECONDS.includes(Number(merged.turnSeconds)) ? Number(merged.turnSeconds) : 60;
-  const speed = Number(merged.speed) === 2 ? 2 : 1;
-  return { maxPlayers, turnSeconds, speed, isPublic: !!merged.isPublic };
+  const turnSeconds = TURN_SECONDS.includes(Number(merged.turnSeconds)) ? Number(merged.turnSeconds) : 120;
+  const speed = [1, 2, 3].includes(Number(merged.speed)) ? Number(merged.speed) : 2;
+  const weeks = RULES.weeksOptions.includes(Number(merged.weeks)) ? Number(merged.weeks) : RULES.defaultWeeks;
+  return { maxPlayers, turnSeconds, speed, isPublic: !!merged.isPublic, weeks };
 }
 
 export class Room {
@@ -54,6 +57,9 @@ export class Room {
     this.seatSeq = 0;
     this.timer = null;
     this.deadline = null;
+    this.turnKey = null;
+    this.graceUsedKey = null;
+    this.botSteps = 0;
     this.destroyed = false;
     this.lastActivity = scheduler.now();
   }
@@ -110,6 +116,7 @@ export class Room {
       isBot: !clientId,
       local,
       ready: !clientId,
+      role: 'random',
       connected: !!clientId,
       away: false,
       afk: 0,
@@ -231,6 +238,20 @@ export class Room {
     return { ok: true };
   }
 
+  // เลือกบทบาท: ของตัวเอง (รวมผู้เล่นในเครื่องเดียวกัน) หรือของบอทถ้าเป็นเจ้าของห้อง
+  setRole(clientId, seatId, role) {
+    if (this.status !== 'lobby') return { ok: false, error: 'เลือกบทบาทได้เฉพาะตอนรอเริ่มเกม' };
+    const seat = this.seats.find((s) => s.id === seatId);
+    if (!seat) return { ok: false, error: 'ไม่พบผู้เล่น' };
+    const allowed = seat.clientId === clientId || (seat.isBot && this.isHost(clientId));
+    if (!allowed) return { ok: false, error: 'เลือกบทบาทให้คนอื่นไม่ได้' };
+    if (role !== 'random' && !ROLES[role]) return { ok: false, error: 'ไม่มีบทบาทนี้' };
+    if (role !== 'random' && this.seats.some((s) => s !== seat && s.role === role)) return { ok: false, error: 'มีคนเลือกบทบาทนี้แล้ว' };
+    seat.role = role;
+    this.broadcastRoom();
+    return { ok: true };
+  }
+
   setOptions(clientId, input) {
     if (!this.isHost(clientId)) return { ok: false, error: 'เฉพาะเจ้าของห้องเท่านั้น' };
     if (this.status !== 'lobby') return { ok: false, error: 'เปลี่ยนการตั้งค่าได้เฉพาะตอนรอเริ่มเกม' };
@@ -276,18 +297,20 @@ export class Room {
     const waiting = this.seats.filter((s) => s.clientId && s.clientId !== clientId && !s.ready);
     if (waiting.length) return { ok: false, error: `รอ ${waiting.map((s) => s.name).join(', ')} กดพร้อมก่อน` };
     this.game = createGame({
-      players: this.seats.map((s) => ({ id: s.id, name: s.name, color: s.color, isBot: s.isBot })),
+      players: this.seats.map((s) => ({ id: s.id, name: s.name, color: s.color, isBot: s.isBot, role: s.role === 'random' ? null : s.role })),
       seed: randomSeed(),
+      options: { weeks: this.options.weeks },
     });
+    this.turnKey = null;
     this.status = 'playing';
     for (const s of this.seats) {
       s.afk = 0;
       s.away = false;
     }
     this.touch();
-    this.systemChat('เกมเริ่มแล้ว! ผลัดกันเล่นตามลำดับ');
+    this.systemChat('เกมเริ่มแล้ว! ผลัดกันเล่นตามลำดับ คนละ 1 สัปดาห์');
     this.broadcastRoom();
-    this.schedule(TIMING.base);
+    this.schedule(TIMING.base, true);
     this.broadcastGame([], true);
     return { ok: true };
   }
@@ -316,20 +339,20 @@ export class Room {
       return { ok: false, error: `ยังไม่ถึงตาของคุณ — ตอนนี้เป็นตาของ ${whose}` };
     }
     if (!action || typeof action !== 'object') return { ok: false, error: 'คำสั่งไม่ถูกต้อง' };
-    const seqBefore = this.game.seq;
     const res = performAction(this.game, seat.id, action);
     if (!res.ok) return res;
     this.touch();
     const wasAway = seat.away;
     seat.afk = 0;
     seat.away = false;
-    const advanced = this.game.seq !== seqBefore;
-    this.afterGameChange(res.events, advanced || wasAway);
+    this.afterGameChange(res.events, wasAway);
     if (wasAway) this.broadcastRoom();
     return { ok: true };
   }
 
-  afterGameChange(events, advanced) {
+  // หลังสถานะเกมเปลี่ยน: ถ้าเปลี่ยนคนเล่นหรือเปลี่ยนช่วงตัดสินใจ เริ่มจับเวลาใหม่
+  // ถ้ายังเป็นตาเดิมของคนจริง เวลาที่เหลือของสัปดาห์นั้นเดินต่อ
+  afterGameChange(events, forceReset = false) {
     const anim = estimateAnimMs(events, this.options.speed);
     if (this.game.status === 'finished') {
       this.clearTimer();
@@ -340,26 +363,46 @@ export class Room {
       this.broadcastRoom();
       return;
     }
-    if (advanced) this.schedule(anim);
+    const key = `${this.game.turn}:${this.game.phase.type}`;
+    const reset = forceReset || key !== this.turnKey;
+    const seat = this.currentSeat();
+    if (reset || seat?.isBot || seat?.away || !seat?.connected) this.schedule(anim, reset);
     this.broadcastGame(events);
   }
 
-  schedule(animMs) {
-    this.clearTimer();
-    this.deadline = null;
+  schedule(animMs, resetDeadline = true) {
+    const key = this.game ? `${this.game.turn}:${this.game.phase.type}` : null;
+    if (key !== this.turnKey) this.botSteps = 0;
+    this.turnKey = key;
     const seat = this.currentSeat();
-    if (!seat || this.destroyed) return;
+    if (!seat || this.destroyed) {
+      this.clearTimer();
+      this.deadline = null;
+      return;
+    }
     const speed = this.options.speed;
     const now = this.scheduler.now();
     if (seat.isBot || seat.away) {
+      this.clearTimer();
+      this.deadline = null;
       this.timer = this.scheduler.setTimeout(() => this.runAuto(), animMs + Math.round(TIMING.botThink / speed));
       return;
     }
     if (!seat.connected) {
-      this.deadline = now + animMs + DISCONNECT_GRACE_MS;
-      this.timer = this.scheduler.setTimeout(() => this.onTimeout(seat.id), animMs + DISCONNECT_GRACE_MS);
+      this.clearTimer();
+      if (this.graceUsedKey === key) {
+        // รอครบเวลาแล้วในตานี้ ระบบเล่นแทนต่อไปเรื่อย ๆ
+        this.deadline = null;
+        this.timer = this.scheduler.setTimeout(() => this.runAuto(), animMs + Math.round(TIMING.botThink / speed));
+      } else {
+        this.deadline = now + animMs + DISCONNECT_GRACE_MS;
+        this.timer = this.scheduler.setTimeout(() => this.onTimeout(seat.id), animMs + DISCONNECT_GRACE_MS);
+      }
       return;
     }
+    if (!resetDeadline && this.timer) return;
+    this.clearTimer();
+    this.deadline = null;
     if (this.options.turnSeconds > 0) {
       const ms = animMs + this.options.turnSeconds * 1000;
       this.deadline = now + ms;
@@ -378,15 +421,26 @@ export class Room {
     if (!seat || seat.id !== seatId) return;
     if (seat.connected) {
       seat.afk += 1;
-      addLog(this.game, `⏰ ${seat.name} หมดเวลา ระบบเลือกให้อัตโนมัติ`, 'info', seat.id);
+      addLog(this.game, `⏰ ${seat.name} หมดเวลา จบสัปดาห์ให้อัตโนมัติ`, 'info', seat.id);
       if (seat.afk >= AFK_LIMIT && !seat.away) {
         seat.away = true;
         this.systemChat(`${seat.name} ไม่ได้เล่นหลายครั้ง ระบบจะเล่นแทนจนกว่าจะกดกลับมาเล่น`);
         this.broadcastRoom();
       }
-    } else {
-      addLog(this.game, `📡 ${seat.name} หลุดการเชื่อมต่อ ระบบเล่นแทนชั่วคราว`, 'info', seat.id);
+      // หมดเวลา: ถ้ามีเรื่องให้เลือกให้ระบบเลือก แล้วจบสัปดาห์
+      const events = [];
+      for (let i = 0; i < 3 && this.game.status === 'playing' && this.game.currentPlayerId === seat.id; i++) {
+        const fb = fallbackAction(this.game);
+        const res = fb ? performAction(this.game, seat.id, fb) : { ok: false };
+        if (!res.ok) break;
+        events.push(...res.events);
+      }
+      if (this.game.status === 'playing' && this.game.currentPlayerId === seat.id) events.push(...forceEndTurn(this.game));
+      this.afterGameChange(events, true);
+      return;
     }
+    addLog(this.game, `📡 ${seat.name} หลุดการเชื่อมต่อ ระบบเล่นแทนชั่วคราว`, 'info', seat.id);
+    this.graceUsedKey = this.turnKey;
     this.runAuto();
   }
 
@@ -396,16 +450,28 @@ export class Room {
     const pid = this.game.currentPlayerId;
     const seqBefore = this.game.seq;
     const events = [];
-    let actions = [];
-    try {
-      actions = decideActions(this.game, pid);
-    } catch (err) {
-      console.error('[room] bot error', err);
-    }
-    for (const a of actions) {
-      const res = performAction(this.game, pid, a);
-      if (!res.ok) break;
-      events.push(...res.events);
+    // บอทซื้อของ/ฝากเงิน (ไม่เสียเวลาในเกม) ต่อกันได้เลยโดยไม่ต้องหยุดรอ
+    for (let chain = 0; chain < 6; chain++) {
+      this.botSteps++;
+      let actions = [];
+      try {
+        actions = this.botSteps > MAX_BOT_STEPS_PER_TURN ? [] : decideActions(this.game, pid);
+      } catch (err) {
+        console.error('[room] bot error', err);
+      }
+      const p = this.game.players[pid];
+      const hoursBefore = p.hoursLeft;
+      let instant = false;
+      for (const a of actions) {
+        const res = performAction(this.game, pid, a);
+        if (!res.ok) {
+          console.error(`[room ${this.code}] bot action rejected`, a, res.error);
+          break;
+        }
+        events.push(...res.events);
+        instant = a.type === 'act' && p.hoursLeft === hoursBefore && this.game.currentPlayerId === pid && this.game.phase.type === 'week';
+      }
+      if (!instant) break;
     }
     if (this.game.seq === seqBefore && this.game.status === 'playing') {
       const fb = fallbackAction(this.game);
@@ -466,6 +532,7 @@ export class Room {
         isBot: s.isBot,
         local: s.local,
         ready: s.ready,
+        role: s.role,
         connected: s.isBot ? true : s.connected,
         away: s.away,
         isHost: !!s.clientId && s.clientId === this.hostClientId && !s.local,

@@ -19,10 +19,10 @@ export function Home({ name, setName, onlineStatus, onCreate, onJoin, onQuick, o
   return (
     <div className="home">
       <div className="home-card">
-        <div className="logo" aria-hidden="true">🎡</div>
+        <div className="logo" aria-hidden="true">🏙️</div>
         <h1>เส้นทางชีวิต</h1>
         <p className="tagline">
-          เกมกระดานจำลองชีวิต ผลัดกันเล่น 2–4 คน — เรียน ทำงาน แต่งงาน ซื้อบ้าน ลงทุน จนถึงวันเกษียณ ใครทั้งรวยและมีความสุขที่สุดคือผู้ชนะ!
+          เกมจำลองชีวิตแนว Walk of Life ผลัดกันเล่นคนละสัปดาห์ 2–4 คน — เดินไปทั่วเมือง ทำงาน เรียน กิน นอน อาบน้ำ แต่งบ้าน ลงทุน ใครใช้ชีวิตได้ดีที่สุดคือผู้ชนะ!
         </p>
 
         <label className="field">
