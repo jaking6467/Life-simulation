@@ -410,8 +410,9 @@ const ACTION_DEFS = [
         .sort((a, b) => a.tier - b.tier || a.wage - b.wage)
         .map((j) => ({
           params: { jobId: j.id },
-          label: `${jobFull(state, j, p) ? '⚔️ ชิงตำแหน่ง ' : ''}${j.title} @ ${LOCATION_BY_ID[j.location].name}`,
-          desc: `${fm(j.wage)}/ชม. • ระดับ ${j.tier} • ${reqText(j)}${slotText(state, j, p)}${JOB_PERKS[j.location] ? ` • สวัสดิการ: ${JOB_PERKS[j.location]}` : ''}`,
+          icon: jobFull(state, j, p) ? '⚔️' : undefined,
+          label: `${jobFull(state, j, p) ? 'ชิงตำแหน่ง' : ''}${j.title} · ${LOCATION_BY_ID[j.location].name}`,
+          desc: `${fm(j.wage)}/ชม. · ระดับ ${j.tier} · ${reqText(j)}${slotText(state, j, p)}${JOB_PERKS[j.location] ? ` · ${JOB_PERKS[j.location]}` : ''}`,
           hours: 1,
           cost: 0,
         })),
@@ -432,8 +433,9 @@ const ACTION_DEFS = [
     variants: (state, p) =>
       COURSE_LIST.filter((c) => !p.education.completed.includes(c.id) && p.education.enrolled !== c.id).map((c) => ({
         params: { courseId: c.id },
-        label: `${c.icon} ${c.name}`,
-        desc: `${c.sessions} คาบ • วุฒิระดับ ${c.level}${c.prereq ? ` • ต้องจบ${COURSES[c.prereq].name}` : ''}`,
+        icon: c.icon,
+        label: c.name,
+        desc: `${c.sessions} คาบ · วุฒิระดับ ${c.level}${c.prereq ? ` · ต้องจบ${COURSES[c.prereq].name}` : ''}`,
         hours: 0,
         cost: courseFee(p, c),
       })),
@@ -513,7 +515,7 @@ const ACTION_DEFS = [
         const sizes = s.id === 'GOLD' ? [1, 5] : [10, 50];
         return sizes.map((n) => {
           const q = stockQuote(state, s.id, n, 'buy');
-          return { params: { symbol: s.id, n }, label: `ซื้อ ${s.icon} ${s.name} ${n} หน่วย`, desc: `ราคา ${fm(state.stocks[s.id].price)}/หน่วย • แรงซื้อดันราคา +${pct(q.impact)} • ค่าธรรมเนียม ${pct(RULES.market.stockFee)}`, hours: 0, cost: q.total };
+          return { params: { symbol: s.id, n }, icon: s.icon, label: `ซื้อ${s.name} ${n} หน่วย`, desc: `${fm(state.stocks[s.id].price)}/หน่วย · ราคาจะขยับ +${pct(q.impact)} · ค่าธรรมเนียม ${pct(RULES.market.stockFee)}`, hours: 0, cost: q.total };
         });
       }),
     run: (state, p, { symbol, n }) => {
@@ -529,7 +531,7 @@ const ACTION_DEFS = [
         .filter(([, n]) => n > 0)
         .map(([sym, n]) => {
           const q = stockQuote(state, sym, n, 'sell');
-          return { params: { symbol: sym }, label: `ขาย ${STOCKS[sym].icon} ${STOCKS[sym].name} ทั้งหมด ${n} หน่วย`, desc: `ได้ประมาณ ${fm(q.total)} (แรงขายกดราคา -${pct(q.impact)})`, hours: 0, cost: 0 };
+          return { params: { symbol: sym }, icon: STOCKS[sym].icon, label: `ขาย${STOCKS[sym].name} ${n} หน่วย`, desc: `ได้ประมาณ ${fm(q.total)} · ราคาจะลด ${pct(q.impact)}`, hours: 0, cost: 0 };
         }),
     run: (state, p, { symbol }) => {
       const n = p.stocks[symbol];
@@ -545,7 +547,7 @@ const ACTION_DEFS = [
   {
     id: 'buyClothes', icon: '👕', group: 'เสื้อผ้า', at: ['mall'],
     variants: (state) =>
-      CLOTHES.filter((c) => c.tier > 0).map((c) => ({ params: { tier: c.tier }, label: `${c.icon} ${c.name}`, desc: `ใส่ได้ ${c.weeks} สัปดาห์${demandText(state, `clothes:${c.tier}`)}`, hours: 0, cost: shopPrice(state, `clothes:${c.tier}`, c.price) })),
+      CLOTHES.filter((c) => c.tier > 0).map((c) => ({ params: { tier: c.tier }, icon: c.icon, label: c.name, desc: `ใส่ได้ ${c.weeks} สัปดาห์${demandText(state, `clothes:${c.tier}`)}`, hours: 0, cost: shopPrice(state, `clothes:${c.tier}`, c.price) })),
     run: (state, p, { tier }) => {
       const c = CLOTHES[tier];
       bumpDemand(state, `clothes:${tier}`);
@@ -556,7 +558,7 @@ const ACTION_DEFS = [
   {
     id: 'buyFurniture', icon: '🛋️', group: 'แต่งบ้าน', at: ['furniture'],
     variants: (state, p) =>
-      FURNITURE_LIST.filter((f) => !p.furniture.includes(f.id)).map((f) => ({ params: { itemId: f.id }, label: `${f.icon} ${f.name}`, desc: `${furnitureText(f)}${demandText(state, `furniture:${f.id}`)}`, hours: 0, cost: shopPrice(state, `furniture:${f.id}`, f.price) })),
+      FURNITURE_LIST.filter((f) => !p.furniture.includes(f.id)).map((f) => ({ params: { itemId: f.id }, icon: f.icon, label: f.name, desc: `${furnitureText(f)}${demandText(state, `furniture:${f.id}`)}`, hours: 0, cost: shopPrice(state, `furniture:${f.id}`, f.price) })),
     check: (state, p) => (p.furniture.length >= HOMES[p.housing].slots ? `บ้านเต็มแล้ว (${HOMES[p.housing].slots} ชิ้น) ย้ายไปคอนโดเพื่อวางของเพิ่ม` : null),
     run: (state, p, { itemId }) => {
       bumpDemand(state, `furniture:${itemId}`);
@@ -572,7 +574,7 @@ const ACTION_DEFS = [
       const tradeIn = p.vehicle ? Math.round(VEHICLES[p.vehicle].price * 0.5) : 0;
       return VEHICLE_ORDER.slice(current + 1).map((id) => {
         const v = VEHICLES[id];
-        return { params: { vehicle: id }, label: `${v.icon} ${v.name}`, desc: `เดินทางเร็วขึ้น (เวลา ×${v.factor})${tradeIn ? ` • หักราคาเทิร์นรถเดิม ${fm(tradeIn)}` : ''}${demandText(state, `vehicle:${id}`)}`, hours: 0, cost: demandPrice(state, `vehicle:${id}`, v.price) - tradeIn };
+        return { params: { vehicle: id }, icon: v.icon, label: v.name, desc: `เดินทางเร็วขึ้น (เวลา ×${v.factor})${tradeIn ? ` · หักราคารถเดิม ${fm(tradeIn)}` : ''}${demandText(state, `vehicle:${id}`)}`, hours: 0, cost: demandPrice(state, `vehicle:${id}`, v.price) - tradeIn };
       });
     },
     run: (state, p, { vehicle }) => {
@@ -651,7 +653,7 @@ const ACTION_DEFS = [
     variants: (state, p) =>
       Object.values(PETS)
         .filter((pet) => !p.pets.includes(pet.id))
-        .map((pet) => ({ params: { pet: pet.id }, label: `${pet.icon} รับเลี้ยง${pet.name}`, desc: `ความสุข +${pet.happiness}/สัปดาห์ • ${pet.note} • ค่าอาหาร ${fm(RULES.petFood)}/สัปดาห์`, hours: 0, cost: pet.price })),
+        .map((pet) => ({ params: { pet: pet.id }, icon: pet.icon, label: `รับเลี้ยง${pet.name}`, desc: `ความสุข +${pet.happiness}/สัปดาห์ · ${pet.note} · ค่าอาหาร ${fm(RULES.petFood)}/สัปดาห์`, hours: 0, cost: pet.price })),
     run: (state, p, { pet }) => {
       p.pets.push(pet);
       log(state, p.id, `${PETS[pet].icon} ${p.name} รับเลี้ยง${PETS[pet].name}`, 'good');
@@ -755,7 +757,7 @@ export function listActions(state, playerId) {
     if (!isAt(state, p, def)) continue;
     for (const v of def.variants(state, p)) {
       const reason = checkVariant(state, p, def, v);
-      out.push({ action: def.id, params: v.params, icon: def.icon, group: def.group, label: v.label, desc: v.desc, hours: v.hours, cost: v.cost, disabled: !!reason, reason });
+      out.push({ action: def.id, params: v.params, icon: v.icon || def.icon, group: def.group, label: v.label, desc: v.desc, hours: v.hours, cost: v.cost, disabled: !!reason, reason });
     }
   }
   return out;
@@ -855,7 +857,7 @@ function reqText(job) {
   if (r.xp) parts.push(`ประสบการณ์ ${r.xp} ชม.`);
   if (r.clothes) parts.push(CLOTHES[r.clothes].name);
   if (r.health) parts.push(`สุขภาพ ${r.health}+`);
-  return parts.length ? parts.join(', ') : 'ไม่ต้องใช้คุณสมบัติ';
+  return parts.length ? parts.join(', ') : 'ไม่ต้องมีวุฒิ';
 }
 
 function maxCourseLevel(p) {
@@ -895,9 +897,9 @@ function weakestHolder(state, job, p) {
 function slotText(state, job, p) {
   if (!job.slots) return '';
   const holders = jobHolders(state, job, p);
-  if (holders.length < job.slots) return ` • ว่าง ${job.slots - holders.length}/${job.slots} ตำแหน่ง`;
+  if (holders.length < job.slots) return ` · ว่าง ${job.slots - holders.length}/${job.slots}`;
   const rival = weakestHolder(state, job, p);
-  return ` • เต็ม! ${holders.map((h) => h.name).join(', ')} ครองอยู่ (คุณสมบัติ ${jobMerit(rival)} + เปรียบ ${RULES.jobs.incumbent} / คุณ ${jobMerit(p)})`;
+  return ` · เต็ม (${holders.map((h) => h.name).join(', ')}) ต้องมีคุณสมบัติเกิน ${jobMerit(rival) + RULES.jobs.incumbent} (คุณ ${jobMerit(p)})`;
 }
 
 function slotBlocker(state, p, job) {
@@ -1012,7 +1014,7 @@ function furnitureText(f) {
   if (f.decor) parts.push(`ความหรู +${f.decor}`);
   for (const [k, v] of Object.entries(f.weekly)) parts.push(`${STAT_NAMES[k]} +${v}/สัปดาห์`);
   if (f.note) parts.push(f.note);
-  return parts.join(' • ');
+  return parts.join(' · ');
 }
 
 function entMul(state) {
@@ -1361,7 +1363,7 @@ function drawLottery(state) {
     }
     p.tickets = 0;
   }
-  const text = winners.length ? winners.join(' • ') : 'งวดนี้ไม่มีใครถูกรางวัล';
+  const text = winners.length ? winners.join(' · ') : 'งวดนี้ไม่มีใครถูกรางวัล';
   emit(state, { type: 'lottery', text });
   log(state, null, `🎟️ ผลลอตเตอรี่: ${text}`, winners.length ? 'good' : 'info');
 }

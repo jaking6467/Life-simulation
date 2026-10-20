@@ -4,9 +4,9 @@ import { Rules } from '../components/Rules.jsx';
 import { BOT_LEVEL_TEXT, ROLE_LIST, ROLES, RULES, initials } from '../lib/game.js';
 
 const TURN_OPTIONS = [
-  [0, 'ไม่จำกัดเวลา'],
+  [0, 'ไม่จำกัด'],
   [60, '1 นาที'],
-  [90, '1 นาทีครึ่ง'],
+  [90, '1.5 นาที'],
   [120, '2 นาที'],
   [180, '3 นาที'],
   [300, '5 นาที'],
@@ -42,37 +42,44 @@ export function Lobby({ room, chat, send, onLeave }) {
       <div className="lobby-card">
         <header className="lobby-head">
           <div>
-            <h2>{room.offline ? '📱 ห้องเล่นออฟไลน์' : '🌐 ห้องรอเล่น'}</h2>
+            <h2>{room.offline ? 'ห้องเล่นออฟไลน์' : 'ห้องรอเล่น'}</h2>
             {!room.offline && (
-              <p>
-                รหัสห้อง <b className="room-code">{room.code}</b>{' '}
+              <p className="lobby-code">
+                รหัสห้อง <b className="room-code">{room.code}</b>
                 <button type="button" className="btn btn-sm" onClick={copyLink}>
-                  {copied ? 'คัดลอกแล้ว ✓' : '🔗 คัดลอกลิงก์ชวนเพื่อน'}
+                  {copied ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์ชวนเพื่อน'}
                 </button>
               </p>
             )}
           </div>
-          <button type="button" className="btn btn-ghost" onClick={onLeave}>
-            ออกจากห้อง
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>
+            ออก
           </button>
         </header>
 
-        <h3>
-          ผู้เล่น ({room.seats.length}/{room.options.maxPlayers})
+        <h3 className="section-title">
+          ผู้เล่น <span className="muted">{room.seats.length}/{room.options.maxPlayers}</span>
         </h3>
         <ul className="seats">
           {room.seats.map((s) => (
             <li key={s.id} className="seat" style={{ '--pc': s.color }}>
-              <span className="avatar" style={{ background: s.color }}>{initials(s.name)}</span>
-              <span className="grow">
-                <b>{s.name}</b> {s.isHost && <span title="เจ้าของห้อง">👑</span>}{' '}
-                {room.you.includes(s.id) && <span className="tag tag-me">คุณ</span>} {s.isBot && <span className="tag">บอท</span>}{' '}
-                {s.local && <span className="tag">เครื่องนี้</span>} {!s.connected && <span className="tag tag-bad">หลุด</span>}
+              <span className="avatar" style={{ background: s.color }}>
+                {initials(s.name)}
               </span>
-              <RolePicker room={room} seat={s} send={send} />
-              <span className={`ready${s.ready || s.isHost ? ' is-ready' : ''}`}>{s.isHost ? 'เจ้าของห้อง' : s.ready ? 'พร้อม ✓' : 'ยังไม่พร้อม'}</span>
+              <span className="seat-main">
+                <span className="seat-name">
+                  <b>{s.name}</b>
+                  {s.isHost && <span className="tag">เจ้าของห้อง</span>}
+                  {room.you.includes(s.id) && <span className="tag tag-me">คุณ</span>}
+                  {s.isBot && <span className="tag">บอท</span>}
+                  {s.local && <span className="tag">เครื่องนี้</span>}
+                  {!s.connected && <span className="tag tag-bad">หลุด</span>}
+                  {!s.isHost && !s.isBot && !s.local && <span className={`tag${s.ready ? ' tag-good' : ''}`}>{s.ready ? 'พร้อม' : 'ยังไม่พร้อม'}</span>}
+                </span>
+                <RolePicker room={room} seat={s} send={send} />
+              </span>
               {room.isHost && !s.isHost && (
-                <button type="button" className="icon-btn" onClick={() => send('room:removeSeat', { seatId: s.id })} aria-label={`นำ ${s.name} ออก`}>
+                <button type="button" className="icon-btn icon-btn-sm" onClick={() => send('room:removeSeat', { seatId: s.id })} aria-label={`นำ ${s.name} ออก`}>
                   ✕
                 </button>
               )}
@@ -80,7 +87,7 @@ export function Lobby({ room, chat, send, onLeave }) {
           ))}
           {Array.from({ length: empty }, (_, i) => (
             <li key={`empty-${i}`} className="seat is-empty">
-              ที่ว่าง — {room.offline ? 'เพิ่มบอทหรือผู้เล่นในเครื่องนี้' : room.isHost ? 'รอเพื่อนเข้าห้อง หรือเพิ่มบอท' : 'รอผู้เล่น'}
+              {room.offline ? 'ที่ว่าง — เพิ่มบอทหรือผู้เล่นในเครื่องนี้' : room.isHost ? 'ที่ว่าง — รอเพื่อนหรือเพิ่มบอท' : 'ที่ว่าง'}
             </li>
           ))}
         </ul>
@@ -98,65 +105,69 @@ export function Lobby({ room, chat, send, onLeave }) {
                 setLocalName('');
               }}
             >
-              <input value={localName} onChange={(e) => setLocalName(e.target.value)} maxLength={16} placeholder="ชื่อผู้เล่นอีกคนในเครื่องนี้" aria-label="ชื่อผู้เล่นในเครื่องนี้" />
+              <input value={localName} onChange={(e) => setLocalName(e.target.value)} maxLength={16} placeholder="ชื่อเพื่อนที่เล่นเครื่องนี้" aria-label="ชื่อผู้เล่นในเครื่องนี้" />
               <button type="submit" className="btn">
-                👥 เพิ่มผู้เล่นในเครื่องนี้
+                เพิ่มคน
               </button>
             </form>
           </div>
         )}
 
         <div className="lobby-options">
-          <h3>⚙️ ตั้งค่าเกม {!room.isHost && <small className="muted">(เจ้าของห้องเป็นคนตั้ง)</small>}</h3>
-          <label>
-            <span>จำนวนผู้เล่นสูงสุด</span>
-            <select disabled={!room.isHost} value={room.options.maxPlayers} onChange={(e) => setOpt({ maxPlayers: Number(e.target.value) })}>
-              {[2, 3, 4].map((n) => (
-                <option key={n} value={n}>
-                  {n} คน
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>ความยาวเกม</span>
-            <select disabled={!room.isHost} value={room.options.weeks} onChange={(e) => setOpt({ weeks: Number(e.target.value) })}>
-              {RULES.weeksOptions.map((w) => (
-                <option key={w} value={w}>
-                  {w} สัปดาห์
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>เวลาเล่นต่อ 1 สัปดาห์ (เวลาจริง)</span>
-            <select disabled={!room.isHost} value={room.options.turnSeconds} onChange={(e) => setOpt({ turnSeconds: Number(e.target.value) })}>
-              {TURN_OPTIONS.map(([v, label]) => (
-                <option key={v} value={v}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>ความเก่งของบอท</span>
-            <select disabled={!room.isHost} value={room.options.botLevel || 'normal'} onChange={(e) => setOpt({ botLevel: e.target.value })}>
-              {Object.entries(BOT_LEVEL_TEXT).map(([v, label]) => (
-                <option key={v} value={v}>
-                  {label}
-                  {v === 'easy' ? ' — เล่นชิล ๆ ไม่ลงทุน ไม่แกล้ง' : v === 'hard' ? ' — วางแผนเก่ง ลงทุนเป็น ชอบแกล้งคนที่นำ' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>ความเร็วแอนิเมชัน</span>
-            <select disabled={!room.isHost} value={room.options.speed} onChange={(e) => setOpt({ speed: Number(e.target.value) })}>
-              <option value={1}>ช้า (ดูบอทเดินชัด ๆ)</option>
-              <option value={2}>ปกติ</option>
-              <option value={3}>เร็วมาก</option>
-            </select>
-          </label>
+          <h3 className="section-title">
+            ตั้งค่าเกม {!room.isHost && <small className="muted">(เจ้าของห้องเป็นคนตั้ง)</small>}
+          </h3>
+          <div className="options-grid">
+            <label>
+              <span>ความยาวเกม</span>
+              <select disabled={!room.isHost} value={room.options.weeks} onChange={(e) => setOpt({ weeks: Number(e.target.value) })}>
+                {RULES.weeksOptions.map((w) => (
+                  <option key={w} value={w}>
+                    {w} สัปดาห์
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>ความเก่งของบอท</span>
+              <select disabled={!room.isHost} value={room.options.botLevel || 'normal'} onChange={(e) => setOpt({ botLevel: e.target.value })}>
+                {Object.entries(BOT_LEVEL_TEXT).map(([v, label]) => (
+                  <option key={v} value={v}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>เวลาต่อตา</span>
+              <select disabled={!room.isHost} value={room.options.turnSeconds} onChange={(e) => setOpt({ turnSeconds: Number(e.target.value) })}>
+                {TURN_OPTIONS.map(([v, label]) => (
+                  <option key={v} value={v}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>ความเร็วแอนิเมชัน</span>
+              <select disabled={!room.isHost} value={room.options.speed} onChange={(e) => setOpt({ speed: Number(e.target.value) })}>
+                <option value={1}>ช้า</option>
+                <option value={2}>ปกติ</option>
+                <option value={3}>เร็ว</option>
+              </select>
+            </label>
+            <label>
+              <span>ผู้เล่นสูงสุด</span>
+              <select disabled={!room.isHost} value={room.options.maxPlayers} onChange={(e) => setOpt({ maxPlayers: Number(e.target.value) })}>
+                {[2, 3, 4].map((n) => (
+                  <option key={n} value={n}>
+                    {n} คน
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="muted small">{BOT_LEVEL_HINT[room.options.botLevel || 'normal']}</p>
           {!room.offline && (
             <label className="check">
               <input type="checkbox" disabled={!room.isHost} checked={room.options.isPublic} onChange={(e) => setOpt({ isPublic: e.target.checked })} />
@@ -167,11 +178,11 @@ export function Lobby({ room, chat, send, onLeave }) {
 
         <div className="lobby-actions">
           {room.isHost ? (
-            <button type="button" className="btn btn-primary btn-lg" disabled={room.seats.length < 2 || notReady.length > 0} onClick={() => send('room:start')}>
+            <button type="button" className="btn btn-primary btn-lg btn-block" disabled={room.seats.length < 2 || notReady.length > 0} onClick={() => send('room:start')}>
               ▶ เริ่มเกม
             </button>
           ) : (
-            <button type="button" className={`btn btn-lg${me?.ready ? '' : ' btn-primary'}`} onClick={() => send('room:ready', { ready: !me?.ready })}>
+            <button type="button" className={`btn btn-lg btn-block${me?.ready ? '' : ' btn-primary'}`} onClick={() => send('room:ready', { ready: !me?.ready })}>
               {me?.ready ? 'ยกเลิกพร้อม' : '✓ พร้อมเล่น'}
             </button>
           )}
@@ -182,13 +193,13 @@ export function Lobby({ room, chat, send, onLeave }) {
 
         {!room.offline && (
           <div className="lobby-chat">
-            <h3>💬 แชท</h3>
+            <h3 className="section-title">แชท</h3>
             <ChatPanel chat={chat} onSend={(text) => send('chat:send', { text })} compact />
           </div>
         )}
 
         <button type="button" className="link-btn" onClick={() => setShowRules((s) => !s)} aria-expanded={showRules}>
-          {showRules ? 'ซ่อนวิธีเล่น ▲' : '📖 วิธีเล่น ▼'}
+          {showRules ? 'ซ่อนวิธีเล่น' : 'วิธีเล่น'}
         </button>
         {showRules && <Rules />}
       </div>
@@ -196,12 +207,18 @@ export function Lobby({ room, chat, send, onLeave }) {
   );
 }
 
+const BOT_LEVEL_HINT = {
+  easy: 'บอทง่าย: เล่นชิล ๆ ไม่ลงทุน ไม่แกล้งใคร',
+  normal: 'บอทปกติ: ใช้ชีวิตครบทุกด้าน มีครอบครัว เปิดธุรกิจเล็ก ๆ',
+  hard: 'บอทยาก: วางแผนเก่ง ลงทุนเป็น ชอบแกล้งคนที่นำอยู่',
+};
+
 function RolePicker({ room, seat, send }) {
   const mine = room.you.includes(seat.id) || (seat.isBot && room.isHost);
   const taken = new Set(room.seats.filter((x) => x.id !== seat.id).map((x) => x.role));
   if (!mine) {
     const r = ROLES[seat.role];
-    return <span className="role-chip">{r ? `${r.icon} ${r.name}` : '🎲 สุ่มบทบาท'}</span>;
+    return <span className="role-chip">{r ? `${r.icon} ${r.name}` : 'สุ่มบทบาท'}</span>;
   }
   return (
     <select className="role-select" value={seat.role} onChange={(e) => send('room:role', { seatId: seat.id, role: e.target.value })} aria-label={`บทบาทของ ${seat.name}`}>
@@ -220,7 +237,7 @@ function RoleGuide() {
   return (
     <div className="role-guide">
       <button type="button" className="link-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        {open ? 'ซ่อนรายละเอียดบทบาท ▲' : '🎭 ดูรายละเอียดบทบาททั้ง 8 แบบ ▼'}
+        {open ? 'ซ่อนรายละเอียดบทบาท' : 'ดูบทบาททั้ง 8 แบบ'}
       </button>
       {open && (
         <div className="roles-grid">
@@ -235,7 +252,7 @@ function RoleGuide() {
                   <li key={perk}>{perk}</li>
                 ))}
               </ul>
-              <p className="small">🏅 ภารกิจ: {r.quests.map((q) => `${q.text} (+${q.points})`).join(' · ')}</p>
+              <p className="small muted">ภารกิจ: {r.quests.map((q) => `${q.text} (+${q.points})`).join(' · ')}</p>
             </div>
           ))}
         </div>

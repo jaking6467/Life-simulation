@@ -32,7 +32,7 @@ export function SaveMenu({ room, send, onClose }) {
     if (!save) return;
     setMessage(
       writeSlot(i, save)
-        ? { tone: 'good', text: `✅ บันทึกลงช่อง ${i + 1} แล้ว` }
+        ? { tone: 'good', text: `บันทึกลงช่อง ${i + 1} แล้ว` }
         : { tone: 'bad', text: '❌ บันทึกไม่สำเร็จ พื้นที่ในเบราว์เซอร์อาจเต็ม — ดาวน์โหลดไฟล์เซฟเก็บไว้แทนได้' },
     );
   };
@@ -42,7 +42,7 @@ export function SaveMenu({ room, send, onClose }) {
     if (!save) return;
     try {
       downloadSave(save);
-      setMessage({ tone: 'good', text: '⬇️ ดาวน์โหลดไฟล์เซฟแล้ว เก็บไว้ดี ๆ นะ' });
+      setMessage({ tone: 'good', text: 'ดาวน์โหลดไฟล์เซฟแล้ว' });
     } catch {
       setMessage({ tone: 'bad', text: '❌ ดาวน์โหลดไม่สำเร็จ ลองใหม่อีกครั้ง' });
     }
@@ -51,12 +51,12 @@ export function SaveMenu({ room, send, onClose }) {
   return (
     <div className="modal-back" onClick={onClose} role="presentation">
       <div className="modal save-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="บันทึกเกม">
-        <h3>💾 บันทึกเกม</h3>
+        <h3>บันทึกเกม</h3>
 
         {room.offline ? (
           <>
             <p className="save-auto-note">
-              ✅ เกมบันทึกอัตโนมัติทุกครั้งที่มีคนเล่น{auto && auto.summary.code === room.code ? ` (ล่าสุด ${formatSavedAt(auto.summary.savedAt)})` : ''} — กดออกแล้วกลับมาเล่นต่อได้จากหน้าแรก
+              เกมบันทึกอัตโนมัติทุกครั้งที่มีคนเล่น{auto && auto.summary.code === room.code ? ` (ล่าสุด ${formatSavedAt(auto.summary.savedAt)})` : ''} — กดออกแล้วกลับมาเล่นต่อได้จากหน้าแรก
             </p>
             <p className="muted small">อยากเก็บไว้หลายจุด (เช่น ก่อนตัดสินใจเรื่องใหญ่) บันทึกลงช่องด้านล่างได้</p>
             <ul className="save-slots">
@@ -78,7 +78,7 @@ export function SaveMenu({ room, send, onClose }) {
           </>
         ) : (
           <>
-            <p className="save-auto-note">✅ เกมออนไลน์บันทึกบนเซิร์ฟเวอร์ให้อัตโนมัติ ไม่ต้องกดบันทึกเอง</p>
+            <p className="save-auto-note">เกมออนไลน์บันทึกบนเซิร์ฟเวอร์ให้อัตโนมัติ</p>
             <ul className="save-notes">
               <li>
                 เน็ตหลุด เผลอปิดหน้าเว็บ หรือเซิร์ฟเวอร์รีสตาร์ต? เปิดเว็บนี้อีกครั้งบน<b>เครื่องและเบราว์เซอร์เดิม</b> ก็กลับเข้าห้อง <b>{room.code}</b> ได้ทันที
@@ -91,11 +91,11 @@ export function SaveMenu({ room, send, onClose }) {
 
         <div className="save-download">
           <button type="button" className="btn" disabled={busy} onClick={download}>
-            ⬇️ ดาวน์โหลดไฟล์เซฟ
+            ดาวน์โหลดไฟล์เซฟ
           </button>
           <span className="muted small">
             {room.offline
-              ? 'ย้ายไปเล่นต่อเครื่องอื่นได้: หน้าแรก → 💾 เล่นต่อ → 📂 เปิดไฟล์เซฟ'
+              ? 'ย้ายไปเล่นต่อเครื่องอื่นได้: หน้าแรก → เล่นต่อ → เปิดไฟล์เซฟ'
               : 'ไฟล์นี้เปิดเล่นต่อแบบออฟไลน์ได้ (ทุกคนผลัดกันเล่นบนเครื่องเดียว): หน้าแรก → 📂 เปิดไฟล์เซฟ'}
           </span>
         </div>

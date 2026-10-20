@@ -16,9 +16,9 @@ import { initials } from '../lib/game.js';
 const BASE_TITLE = 'เส้นทางชีวิต — Life Simulation';
 // มือถือ: แผนที่และแผงเทิร์นแสดงตลอด แท็บใช้สลับส่วนล่าง
 const MOBILE_TABS = [
-  ['log', '📜 บันทึก'],
-  ['players', '👥 ผู้เล่น'],
-  ['chat', '💬 แชท'],
+  ['log', 'บันทึก'],
+  ['players', 'ผู้เล่น'],
+  ['chat', 'แชท'],
 ];
 
 export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted }) {
@@ -32,6 +32,7 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
   const [showResults, setShowResults] = useState(true);
   const [showRules, setShowRules] = useState(false);
   const [showSave, setShowSave] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const closeSave = useCallback(() => setShowSave(false), []);
   const [seenChat, setSeenChat] = useState(chat.length);
   const [pendingSeq, setPendingSeq] = useState(null);
@@ -107,43 +108,39 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
   const feedPanel =
     feedTab === 'chat' ? <ChatPanel chat={chat} onSend={(text) => send('chat:send', { text })} /> : <LogPanel log={view.log} players={view.players} />;
 
+  const menuItems = [
+    { icon: '📖', label: 'วิธีเล่น', onClick: () => setShowRules(true) },
+    { icon: '💾', label: 'บันทึกเกม', onClick: () => setShowSave(true) },
+    { icon: '🧭', label: coach.enabled ? 'ปิดคำแนะนำมือใหม่' : 'เปิดคำแนะนำมือใหม่', onClick: coach.toggle },
+    { icon: muted ? '🔔' : '🔕', label: muted ? 'เปิดเสียงเตือนเมื่อถึงตา' : 'ปิดเสียงเตือน', onClick: () => setMuted((m) => !m) },
+    { icon: '🚪', label: 'ออกจากเกม', onClick: leave, tone: 'bad' },
+  ];
+
   return (
     <div className="game">
       <header className="topbar">
-        <div className="brand">
-          🏙️ <span>เส้นทางชีวิต</span>
-        </div>
         <div className="topbar-info">
-          {!room.offline && <span className="chip">ห้อง {room.code}</span>}
-          <span className="chip">
-            สัปดาห์ {view.week}/{view.maxWeeks}
+          <span className="week-chip">
+            สัปดาห์ <b>{view.week}</b>/{view.maxWeeks}
           </span>
+          {!room.offline && <span className="room-chip">ห้อง {room.code}</span>}
         </div>
         <div className="order-strip" aria-label="ลำดับการเล่น">
           {view.order.map((id, i) => {
             const p = view.players.find((x) => x.id === id);
             return (
-              <span key={id} className={`order-chip${id === view.currentPlayerId ? ' is-current' : ''}`} style={{ '--pc': p.color }} title={`${i + 1}. ${p.name} (${p.score} คะแนน)`}>
+              <span key={id} className={`order-chip${id === view.currentPlayerId ? ' is-current' : ''}${myIds.includes(id) ? ' is-mine' : ''}`} style={{ '--pc': p.color }} title={`${i + 1}. ${p.name} (${p.score} คะแนน)`}>
                 {initials(p.name)}
               </span>
             );
           })}
         </div>
         <div className="topbar-actions">
-          <button type="button" className={`icon-btn coach-toggle${coach.enabled ? ' is-on' : ''}`} onClick={coach.toggle} title={coach.enabled ? 'ปิดคำแนะนำมือใหม่' : 'เปิดคำแนะนำมือใหม่'} aria-label="คำแนะนำมือใหม่" aria-pressed={coach.enabled}>
-            🧭
-          </button>
-          <button type="button" className="icon-btn" onClick={() => setShowRules(true)} title="วิธีเล่น" aria-label="วิธีเล่น">
-            📖
-          </button>
           <button type="button" className="icon-btn" onClick={() => setShowSave(true)} title="บันทึกเกม" aria-label="บันทึกเกม">
             💾
           </button>
-          <button type="button" className="icon-btn" onClick={() => setMuted((m) => !m)} title={muted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'} aria-label="เสียงแจ้งเตือน">
-            {muted ? '🔇' : '🔔'}
-          </button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={leave}>
-            ออก
+          <button type="button" className="icon-btn" onClick={() => setShowMenu(true)} title="เมนู" aria-label="เมนู" aria-haspopup="dialog">
+            ⋯
           </button>
         </div>
       </header>
@@ -171,7 +168,7 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
             onComeBack={() => send('room:back')}
             highlightAction={coach.highlightAction}
           />
-          <nav className="mobile-tabs" aria-label="เมนู">
+          <nav className="mobile-tabs" aria-label="ข้อมูลเพิ่มเติม">
             {MOBILE_TABS.map(([id, label]) => (
               <button
                 key={id}
@@ -190,10 +187,10 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
           <section className="feed">
             <div className="feed-tabs">
               <button type="button" className={feedTab === 'log' ? 'is-active' : ''} onClick={() => setFeedTab('log')}>
-                📜 บันทึกเหตุการณ์
+                บันทึก
               </button>
               <button type="button" className={feedTab === 'chat' ? 'is-active' : ''} onClick={() => setFeedTab('chat')}>
-                💬 แชท {unread > 0 && <span className="badge">{unread}</span>}
+                แชท {unread > 0 && <span className="badge">{unread}</span>}
               </button>
             </div>
             <div className="feed-body">{feedPanel}</div>
@@ -212,6 +209,32 @@ export function GameScreen({ room, feed, chat, send, onLeave, muted, setMuted })
         <button type="button" className="btn btn-primary results-reopen" onClick={() => setShowResults(true)}>
           🏆 ดูผลอันดับ
         </button>
+      )}
+
+      {showMenu && (
+        <div className="modal-back sheet-back" onClick={() => setShowMenu(false)} role="presentation">
+          <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="เมนู">
+            {menuItems.map((m) => (
+              <button
+                key={m.label}
+                type="button"
+                className={`sheet-item${m.tone ? ` is-${m.tone}` : ''}`}
+                onClick={() => {
+                  setShowMenu(false);
+                  m.onClick();
+                }}
+              >
+                <span className="sheet-icon" aria-hidden="true">
+                  {m.icon}
+                </span>
+                {m.label}
+              </button>
+            ))}
+            <button type="button" className="sheet-item sheet-cancel" onClick={() => setShowMenu(false)}>
+              ปิด
+            </button>
+          </div>
+        </div>
       )}
 
       {showSave && <SaveMenu room={room} send={send} onClose={closeSave} />}

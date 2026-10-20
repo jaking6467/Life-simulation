@@ -23,7 +23,7 @@ export const cardActions = [
   {
     id: 'buyCard', icon: '🃏', group: 'การ์ดแกล้ง & ช่วยเหลือ', at: ['arcade'],
     variants: (state) =>
-      CARD_LIST.map((c) => ({ params: { cardId: c.id }, label: `${c.icon} การ์ด${c.name}`, desc: `${c.desc}${demandText(state, cardKey(c.id))}`, hours: 0, cost: cardPrice(state, c) })),
+      CARD_LIST.map((c) => ({ params: { cardId: c.id }, icon: c.icon, label: `การ์ด${c.name}`, desc: `${c.desc}${demandText(state, cardKey(c.id))}`, hours: 0, cost: cardPrice(state, c) })),
     check: (state, p) => (p.cards.length >= RULES.cards.hand ? `ถือการ์ดได้สูงสุด ${RULES.cards.hand} ใบ` : null),
     run: (state, p, { cardId }) => {
       p.cards.push(cardId);
@@ -48,7 +48,7 @@ export const cardActions = [
         const c = CARDS[cardId];
         for (const t of others(state, p)) {
           const verb = c.kind === 'help' ? 'ให้' : 'ใส่';
-          list.push({ params: { cardId, target: t.id }, label: `${c.icon} ${c.name}${verb} ${t.name}`, desc: c.desc, hours: 0, cost: 0 });
+          list.push({ params: { cardId, target: t.id }, icon: c.icon, label: `${c.name}${verb} ${t.name}`, desc: c.desc, hours: 0, cost: 0 });
         }
       }
       return list;
@@ -113,7 +113,7 @@ export function applyPendingCards(state, p) {
     log(state, p.id, `${c.icon} ${p.name} โดนการ์ด${c.name}จาก ${fromName} (${parts.join(', ')})`, 'bad');
   }
   p.pending = [];
-  emit(state, { type: 'event', kind: 'prank', playerId: p.id, icon: '🃏', name: 'โดนแกล้ง!', text: lines.join(' • ') });
+  emit(state, { type: 'event', kind: 'prank', playerId: p.id, icon: '🃏', name: 'โดนแกล้ง!', text: lines.join(' · ') });
 }
 
 export function cardPriceFor(state, cardId) {

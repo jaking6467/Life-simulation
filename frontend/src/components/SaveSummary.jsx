@@ -18,7 +18,7 @@ export function SaveSummary({ summary }) {
     <div className="save-summary">
       <div className="save-summary-top">
         <span className="chip">{weekText(summary)}</span>
-        <span className="muted small">💾 {formatSavedAt(summary.savedAt)}</span>
+        <span className="muted small">{formatSavedAt(summary.savedAt)}</span>
       </div>
       <div className="save-players">
         {(summary.players || []).map((p) => (

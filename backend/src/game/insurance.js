@@ -16,7 +16,7 @@ export const insuranceActions = [
   {
     id: 'buyInsurance', icon: '📄', group: 'ประกันภัย', at: ['bank'],
     variants: (state, p) =>
-      INSURANCE_LIST.filter((i) => !insured(p, i.id)).map((i) => ({ params: { kind: i.id }, label: `${i.icon} ทำ${i.name}`, desc: `${i.desc} • เบี้ย ${fm(i.premium)}/สัปดาห์`, hours: 0, cost: i.premium })),
+      INSURANCE_LIST.filter((i) => !insured(p, i.id)).map((i) => ({ params: { kind: i.id }, icon: i.icon, label: `ทำ${i.name}`, desc: `${i.desc} · ${fm(i.premium)}/สัปดาห์`, hours: 0, cost: i.premium })),
     check: (state, p, v) => {
       const i = INSURANCE[v.params.kind];
       return i.needs && !i.needs(p) ? i.needsText : null;

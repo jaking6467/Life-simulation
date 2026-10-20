@@ -110,7 +110,7 @@ function GoButton({ item, canMove, busy, onMove, primary = true }) {
   const { id, hours, ok } = item.go;
   return (
     <button type="button" className={`btn btn-sm ${primary ? 'btn-primary' : 'coach-go-mini'}`} disabled={!canMove || busy || !ok} onClick={() => onMove(id)}>
-      🚶 {primary ? 'พาไปเลย' : 'ไป'} ({hours} ชม.)
+      {primary ? 'พาไปเลย' : 'ไป'} · {hours} ชม.
     </button>
   );
 }
@@ -152,7 +152,7 @@ export function Coach({ coach, canMove, busy, onMove }) {
             {collapsed ? '▸' : '▾'}
           </span>
         </button>
-        <button type="button" className="coach-x" onClick={coach.close} aria-label="ปิดคำแนะนำ" title="ปิดคำแนะนำ (เปิดใหม่ได้ที่ปุ่ม 🧭 ด้านบน)">
+        <button type="button" className="coach-x" onClick={coach.close} aria-label="ปิดคำแนะนำ" title="ปิดคำแนะนำ (เปิดใหม่ได้ที่เมนู ⋯)">
           ✕
         </button>
       </div>
@@ -170,7 +170,7 @@ export function Coach({ coach, canMove, busy, onMove }) {
                 <p className="coach-why">อยากให้ผู้ช่วยคอยเตือนเรื่องสำคัญและบอกเคล็ดลับขั้นสูงต่อไหม?</p>
                 <div className="coach-actions">
                   <button type="button" className="btn btn-primary btn-sm" onClick={coach.keepTips}>
-                    👍 เปิดเคล็ดลับไว้
+                    เปิดเคล็ดลับไว้
                   </button>
                   <button type="button" className="btn btn-sm" onClick={coach.close}>
                     ปิดคำแนะนำ
@@ -188,18 +188,18 @@ export function Coach({ coach, canMove, busy, onMove }) {
               <div className="coach-step-main">
                 <b className="coach-step-title">{step.title}</b>
                 <p className="coach-text">{step.text}</p>
-                {step.note && <p className="coach-note">ℹ️ {step.note}</p>}
-                {step.why && <p className="coach-why">💡 {step.why}</p>}
+                {step.note && <p className="coach-note">{step.note}</p>}
+                {step.why && <p className="coach-why">{step.why}</p>}
                 <div className="coach-actions">
                   {step.next && (
                     <button type="button" className="btn btn-primary btn-sm" onClick={coach.next}>
-                      เข้าใจแล้ว ไปต่อ →
+                      เข้าใจแล้ว
                     </button>
                   )}
                   {showGo(step) && <GoButton item={step} canMove={canMove} busy={busy} onMove={onMove} />}
                   {actHere && (
                     <button type="button" className="btn btn-sm" onClick={scrollToAction}>
-                      👇 ดูปุ่ม
+                      ดูปุ่ม
                     </button>
                   )}
                   {step.id !== 'choice' && !step.next && !step.lowTime && (
@@ -228,7 +228,7 @@ export function Coach({ coach, canMove, busy, onMove }) {
           {adv && (
             <div className="coach-adv">
               <div className="coach-adv-head">
-                <span className="coach-adv-tag">✨ ขั้นสูง</span>
+                <span className="coach-adv-tag">ขั้นสูง</span>
                 <b>
                   {adv.icon} {adv.title}
                 </b>
@@ -245,9 +245,9 @@ export function Coach({ coach, canMove, busy, onMove }) {
 
           {idle && (
             <p className="coach-idle">
-              {!tip && !adv && <>✅ ผู้ช่วยเปิดอยู่ จะเตือนเมื่อมีเรื่องสำคัญ · </>}
+              {!tip && !adv && <>ผู้ช่วยเปิดอยู่ จะเตือนเมื่อมีเรื่องสำคัญ · </>}
               <button type="button" className="link-btn" onClick={coach.restart}>
-                ↺ สอนพื้นฐานใหม่
+                สอนพื้นฐานใหม่
               </button>
             </p>
           )}
@@ -271,8 +271,8 @@ export function TutorialToggle() {
         }}
       />
       <span>
-        🧭 เปิดคำแนะนำสำหรับมือใหม่
-        <small>สอนทีละขั้นในเกม: กิน อาบน้ำ หางาน ทำงาน เรียน</small>
+        เปิดคำแนะนำสำหรับมือใหม่
+        <small>สอนทีละขั้นในเกม: กิน หางาน ทำงาน อาบน้ำ เรียน</small>
       </span>
     </label>
   );

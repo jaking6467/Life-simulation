@@ -76,7 +76,7 @@ export const familyActions = [
       const liked = p.love.likes === spot.style;
       return one({
         label: `${spot.name}กับ${p.love.name}`,
-        desc: `ความรัก +${Math.round((spot.affection + (liked ? LIKED_BONUS : 0)) * loveMod(state))}${liked ? ' (ของโปรด!)' : ''} ความสุข +${spot.happiness}${spot.eats ? ' • นับเป็นมื้ออาหาร' : ''}`,
+        desc: `ความรัก +${Math.round((spot.affection + (liked ? LIKED_BONUS : 0)) * loveMod(state))}${liked ? ' (ของโปรด!)' : ''} ความสุข +${spot.happiness}${spot.eats ? ' · นับเป็นมื้ออาหาร' : ''}`,
         hours: spot.hours,
         cost: spot.cost,
       });
@@ -94,7 +94,7 @@ export const familyActions = [
   },
   {
     id: 'propose', icon: '💍', group: 'ความรัก', at: ['temple'],
-    variants: (state, p) => (p.love?.stage === 'dating' ? one({ label: `ขอ${p.love.name}แต่งงาน`, desc: `จัดงานแต่งที่วัด • ต้องคบกัน ${F.proposeWeeks} สัปดาห์ และความรัก ${F.proposeAffection}+ • คู่ชีวิตช่วยหารายได้ทุกสัปดาห์`, hours: 4, cost: F.weddingCost }) : []),
+    variants: (state, p) => (p.love?.stage === 'dating' ? one({ label: `ขอ${p.love.name}แต่งงาน`, desc: `จัดงานแต่งที่วัด · ต้องคบกัน ${F.proposeWeeks} สัปดาห์ และความรัก ${F.proposeAffection}+ · คู่ชีวิตช่วยหารายได้ทุกสัปดาห์`, hours: 4, cost: F.weddingCost }) : []),
     check: (state, p) => {
       if (p.love.weeks < F.proposeWeeks) return `ต้องคบกันอย่างน้อย ${F.proposeWeeks} สัปดาห์ (ตอนนี้ ${p.love.weeks})`;
       if (p.love.affection < F.proposeAffection) return `ความรักต้อง ${F.proposeAffection} ขึ้นไป (ตอนนี้ ${p.love.affection})`;
@@ -112,7 +112,7 @@ export const familyActions = [
   },
   {
     id: 'haveBaby', icon: '👶', group: 'ครอบครัว', at: ['hospital'],
-    variants: (state, p) => (p.love?.stage === 'married' ? one({ label: 'มีลูกน้อย', desc: `ความสุข +15 • ค่าเลี้ยงดู ${fm(F.kidWeekly)}/สัปดาห์ • ลูกอยากให้ใช้เวลาด้วยที่บ้าน`, hours: 4, cost: F.babyCost }) : []),
+    variants: (state, p) => (p.love?.stage === 'married' ? one({ label: 'มีลูกน้อย', desc: `ความสุข +15 · ค่าเลี้ยงดู ${fm(F.kidWeekly)}/สัปดาห์ · ลูกอยากให้ใช้เวลาด้วยที่บ้าน`, hours: 4, cost: F.babyCost }) : []),
     check: (state, p) => {
       if (p.kids.length >= F.maxKids) return `มีลูกครบ ${F.maxKids} คนแล้ว`;
       if (p.love.affection < F.babyAffection) return `ความรักต้อง ${F.babyAffection} ขึ้นไป`;
@@ -134,7 +134,7 @@ export const familyActions = [
     variants: (state, p) => {
       if (!p.love && !p.kids.length) return [];
       const who = [p.love?.name, p.kids.length ? `ลูก ${p.kids.length} คน` : null].filter(Boolean).join(' และ');
-      return one({ label: `ใช้เวลากับครอบครัว`, desc: `อยู่กับ${who} • ความรัก +10 ความสุข +${6 + 2 * p.kids.length}`, hours: 3 });
+      return one({ label: `ใช้เวลากับครอบครัว`, desc: `อยู่กับ${who} · ความรัก +10 ความสุข +${6 + 2 * p.kids.length}`, hours: 3 });
     },
     check: (state, p) => (p.weekActs.familyTime ? 'สัปดาห์นี้ใช้เวลากับครอบครัวแล้ว' : null),
     run: (state, p, params, { boost }) => {

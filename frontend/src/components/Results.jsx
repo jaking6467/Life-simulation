@@ -1,4 +1,4 @@
-import { BUSINESSES, COURSES, HOMES, JOBS, ROLES, SCORE_CATEGORIES, formatMoney } from '../lib/game.js';
+import { JOBS, ROLES, SCORE_CATEGORIES, formatMoney } from '../lib/game.js';
 
 const MEDALS = ['🥇', '🥈', '🥉', '🏅'];
 
@@ -8,8 +8,9 @@ export function Results({ view, myIds, isHost, onRematch, onLeave, onClose }) {
   return (
     <div className="modal-back" role="presentation">
       <div className="modal results" role="dialog" aria-label="ผลการแข่งขัน">
-        <h2>🏁 จบเกม {view.maxWeeks} สัปดาห์!</h2>
-        {mine && <p className="results-mine">{mine.rank === 1 ? '🎉 ยินดีด้วย คุณใช้ชีวิตได้ดีที่สุด!' : `คุณได้อันดับที่ ${mine.rank}`}</p>}
+        <p className="weekend-kicker">จบเกม {view.maxWeeks} สัปดาห์</p>
+        <h2>ผลอันดับ</h2>
+        {mine && <p className="results-mine">{mine.rank === 1 ? 'ยินดีด้วย คุณใช้ชีวิตได้ดีที่สุด 🎉' : `คุณได้อันดับที่ ${mine.rank}`}</p>}
         <ol className="results-list">
           {results.map((r) => {
             const role = ROLES[r.role];
@@ -32,14 +33,14 @@ export function Results({ view, myIds, isHost, onRematch, onLeave, onClose }) {
                   {r.bonusPoints > 0 && <span title="โบนัสพิเศษ">✨ {r.bonusPoints}</span>}
                 </div>
                 <div className="result-meta muted">
-                  💰 ทรัพย์สินสุทธิ {formatMoney(r.netWorth)}
-                  {r.job ? ` · 💼 ${JOBS[r.job].title}` : ' · ว่างงาน'}
-                  {r.education.length ? ` · 🎓 ${r.education.map((id) => COURSES[id].icon).join('')}` : ''}
-                  {` · ภารกิจสำเร็จ ${r.quests.length}/3`}
-                  {r.love ? ` · ${r.love.stage === 'married' ? '💍' : '💑'} ${r.love.name}` : ''}
-                  {r.kids ? ` 👶×${r.kids}` : ''}
-                  {r.owned ? ` · 🔑 ${HOMES[r.owned].name}` : ''}
-                  {r.businesses?.length ? ` · 🏪 ${r.businesses.map((b) => BUSINESSES[b.id].icon).join('')}` : ''}
+                  ทรัพย์สิน {formatMoney(r.netWorth)}
+                  {r.job ? ` · ${JOBS[r.job].title}` : ' · ว่างงาน'}
+                  {r.education.length ? ` · วุฒิ ${r.education.length}` : ''}
+                  {` · ภารกิจ ${r.quests.length}/3`}
+                  {r.love ? ` · ${r.love.stage === 'married' ? 'แต่งงานกับ' : 'คบกับ'}${r.love.name}` : ''}
+                  {r.kids ? ` · ลูก ${r.kids}` : ''}
+                  {r.owned ? ` · มีบ้าน` : ''}
+                  {r.businesses?.length ? ` · ธุรกิจ ${r.businesses.length}` : ''}
                 </div>
               </li>
             );
@@ -48,7 +49,7 @@ export function Results({ view, myIds, isHost, onRematch, onLeave, onClose }) {
         <div className="btn-row center">
           {isHost ? (
             <button type="button" className="btn btn-primary" onClick={onRematch}>
-              🔁 เล่นอีกรอบ
+              เล่นอีกรอบ
             </button>
           ) : (
             <span className="muted">รอเจ้าของห้องเริ่มรอบใหม่…</span>

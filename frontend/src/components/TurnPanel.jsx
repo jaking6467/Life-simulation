@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CHOICE_EVENT_BY_ID, LOCATION_BY_ID, formatMoney, locationName, phaseText, turnsUntil } from '../lib/game.js';
+import { CHOICE_EVENT_BY_ID, LOCATION_BY_ID, formatMoney, turnsUntil } from '../lib/game.js';
 import { matchAction } from '../lib/coach.js';
 
+// แผงเทิร์น: ใครกำลังเล่น เวลาที่เหลือ และกิจกรรมของอาคารที่ยืนอยู่
 // highlightAction (ไม่บังคับ): { action, params } ปุ่มที่ผู้ช่วยมือใหม่แนะนำ ('endTurn' = ปุ่มจบสัปดาห์)
 export function TurnPanel({ view, room, myIds, act, busy, deadline, turnSeconds, ticker, onComeBack, highlightAction = null }) {
   const current = view.players.find((p) => p.id === view.currentPlayerId);
@@ -11,28 +12,30 @@ export function TurnPanel({ view, room, myIds, act, busy, deadline, turnSeconds,
   const away = mineTurn && seat?.away;
   const canAct = mineTurn && !busy && !away && !finished;
   const multiLocal = myIds.length > 1;
+  const title = finished ? 'จบเกมแล้ว' : mineTurn ? (multiLocal ? `ตาของ ${current.name}` : 'ตาของคุณ') : `ตาของ ${current?.name || ''}`;
 
   return (
-    <section className={`turn-panel${mineTurn && !finished ? ' is-mine' : ''}`} style={{ '--pc': current?.color || '#999' }}>
+    <section className={`turn-panel${mineTurn && !finished ? ' is-mine' : ''}`} style={{ '--pc': current?.color || 'var(--muted)' }}>
       <header className="turn-head">
         <div className="turn-title">
-          {finished ? '🏁 จบเกมแล้ว' : mineTurn ? <>🎯 ตาของ{multiLocal ? ` ${current.name}` : 'คุณ'}!</> : <>⏳ ตาของ <b>{current?.name}</b></>}
+          {!finished && <span className="turn-dot" aria-hidden="true" />}
+          {title}
         </div>
         {!finished && current && (
-          <div className="turn-sub">
-            สัปดาห์ที่ {view.week}/{view.maxWeeks} · 📍 {locationName(current.location)} · {phaseText(view.phase)}
+          <div className={`turn-hours${current.hoursLeft <= 8 ? ' is-low' : ''}`} title="เวลาที่เหลือในสัปดาห์นี้">
+            <b>{current.hoursLeft}</b>/{current.hoursMax} ชม.
           </div>
         )}
-        {!finished && current && <HoursBar left={current.hoursLeft} max={current.hoursMax} />}
-        {!finished && deadline && <Countdown deadline={deadline} total={turnSeconds} />}
       </header>
+      {!finished && current && <HoursBar left={current.hoursLeft} max={current.hoursMax} />}
+      {!finished && deadline && <Countdown deadline={deadline} total={turnSeconds} />}
 
       {canAct && view.phase.type === 'choice' && <ChoicePanel view={view} act={act} />}
       {canAct && view.phase.type === 'week' && <LocationPanel view={view} me={current} act={act} multiLocal={multiLocal} highlightAction={highlightAction} />}
-      {mineTurn && busy && !finished && <p className="hint muted">กำลังแสดงผล…</p>}
+      {mineTurn && busy && !finished && <p className="turn-note">กำลังแสดงผล…</p>}
       {away && !finished && (
         <div className="away-box">
-          <span>🤖 ระบบกำลังเล่นแทนคุณ เพราะไม่ได้กดในเวลาที่กำหนด</span>
+          <span>ระบบกำลังเล่นแทน เพราะไม่ได้กดในเวลาที่กำหนด</span>
           <button type="button" className="btn btn-primary btn-sm" onClick={onComeBack}>
             กลับมาเล่นเอง
           </button>
@@ -47,17 +50,20 @@ function ChoicePanel({ view, act }) {
   const ev = CHOICE_EVENT_BY_ID[view.phase.eventId];
   return (
     <div className="decision">
-      <h3>
-        {ev.icon} {ev.name}
-      </h3>
-      <p className="decision-hint">{ev.text}</p>
+      <div className="decision-head">
+        <span className="decision-icon" aria-hidden="true">
+          {ev.icon}
+        </span>
+        <div>
+          <h3>{ev.name}</h3>
+          <p>{ev.text}</p>
+        </div>
+      </div>
       <div className="opts">
         {view.phase.options.map((o, i) => (
           <button key={o.id} type="button" className={`opt${i === view.phase.options.length - 1 ? ' opt-ghost' : ''}`} onClick={() => act({ type: 'choose', value: o.id })}>
-            <span className="opt-body">
-              <span className="opt-title">{o.label}</span>
-              <span className="opt-desc">{o.desc}</span>
-            </span>
+            <span className="opt-title">{o.label}</span>
+            <span className="opt-desc">{o.desc}</span>
           </button>
         ))}
       </div>
@@ -90,26 +96,30 @@ function LocationPanel({ view, me, act, multiLocal, highlightAction }) {
   const hiddenCount = view.actions.filter((a) => a.disabled && a.action !== 'work' && a.action !== 'attend').length;
 
   const endWeek = () => {
-    if (me.hoursLeft > 8 && !window.confirm(`ยังเหลือเวลาอีก ${me.hoursLeft} ชม. จะจบสัปดาห์เลยไหม?`)) return;
+    if (me.hoursLeft > 8 && !window.confirm(`ยังเหลือเวลา ${me.hoursLeft} ชม. จบสัปดาห์เลยไหม?`)) return;
     act({ type: 'endTurn' });
   };
 
   return (
     <div className="loc-panel" ref={ref}>
-      <div className="loc-head">
-        <span className="loc-icon">{loc.icon}</span>
-        <div>
+      <div className="place">
+        <span className="place-icon" aria-hidden="true">
+          {loc.icon}
+        </span>
+        <div className="place-text">
           <b>{loc.name}</b>
-          <p>{loc.desc}</p>
+          <small>{loc.desc}</small>
         </div>
       </div>
-      {multiLocal && <p className="hint">ส่งเครื่องให้ <b>{me.name}</b> เล่นได้เลย</p>}
-      {!me.ate && <p className="warn-line">🍽️ สัปดาห์นี้ยังไม่ได้กินอะไร! (ไก่ทอด ภัตตาคาร หรือทำกินเองที่บ้าน)</p>}
+      {multiLocal && <p className="turn-note">ส่งเครื่องให้ {me.name} เล่นได้เลย</p>}
+      {!me.ate && <p className="notice-line tone-warn">ยังไม่ได้กินอะไรสัปดาห์นี้ — ไก่ทอด ภัตตาคาร หรือทำกินที่บ้าน</p>}
       {me.love && me.love.affection < 30 && !me.weekActs?.date && (
-        <p className="warn-line">💔 ความรักกับ{me.love.name}เหลือ {me.love.affection} — ไปเดตหรือใช้เวลาด้วยกันหน่อย ไม่งั้นอาจเลิกกัน!</p>
+        <p className="notice-line tone-bad">
+          ความรักกับ{me.love.name}เหลือ {me.love.affection} — ไปเดตหรือใช้เวลาด้วยกัน ไม่งั้นอาจเลิกกัน
+        </p>
       )}
 
-      {groups.length === 0 && <p className="muted hint">ที่นี่ไม่มีอะไรให้ทำ แตะอาคารบนแผนที่เพื่อเดินไปที่อื่น</p>}
+      {groups.length === 0 && <p className="turn-note">ที่นี่ไม่มีอะไรให้ทำ แตะอาคารบนแผนที่เพื่อเดินไปที่อื่น</p>}
       {groups.map(([group, list]) => (
         <div key={group} className="act-group">
           <h4>{group}</h4>
@@ -123,14 +133,16 @@ function LocationPanel({ view, me, act, multiLocal, highlightAction }) {
                 onClick={() => act({ type: 'act', action: a.action, params: a.params })}
                 title={a.reason || a.desc}
               >
-                <span className="act-icon">{a.icon}</span>
+                <span className="act-icon" aria-hidden="true">
+                  {a.icon}
+                </span>
                 <span className="act-body">
                   <span className="act-label">{a.label}</span>
-                  <span className="act-desc">{a.disabled ? `⚠️ ${a.reason}` : a.desc}</span>
+                  <span className="act-desc">{a.disabled ? a.reason : a.desc}</span>
                 </span>
                 <span className="act-cost">
-                  {a.hours > 0 && <span className="chip">⏱ {a.hours} ชม.</span>}
-                  {a.cost > 0 && <span className="chip chip-money">{formatMoney(a.cost)}</span>}
+                  {a.hours > 0 && <span className="act-hours">{a.hours} ชม.</span>}
+                  {a.cost > 0 && <span className="act-money">{formatMoney(a.cost)}</span>}
                 </span>
               </button>
             ))}
@@ -138,14 +150,17 @@ function LocationPanel({ view, me, act, multiLocal, highlightAction }) {
         </div>
       ))}
       {hiddenCount > 0 && (
-        <button type="button" className="link-btn" onClick={() => setShowDisabled((s) => !s)}>
+        <button type="button" className="link-btn more-link" onClick={() => setShowDisabled((s) => !s)}>
           {showDisabled ? 'ซ่อนตัวเลือกที่ยังทำไม่ได้' : `ดูตัวเลือกที่ยังทำไม่ได้ (${hiddenCount})`}
         </button>
       )}
 
-      <button type="button" className={`btn btn-end${highlightAction?.action === 'endTurn' ? ' is-coach' : ''}`} onClick={endWeek}>
-        🌙 จบสัปดาห์ (ส่งตาให้คนถัดไป)
-      </button>
+      <div className="turn-dock">
+        <button type="button" className={`btn btn-end${highlightAction?.action === 'endTurn' ? ' is-coach' : ''}`} onClick={endWeek}>
+          จบสัปดาห์
+          <small>เหลือ {me.hoursLeft} ชม.</small>
+        </button>
+      </div>
     </div>
   );
 }
@@ -156,9 +171,9 @@ function Waiting({ view, myIds, current, ticker }) {
   return (
     <div className="waiting">
       <p>
-        รอ <b style={{ color: current?.color }}>{current?.name}</b> ใช้ชีวิตให้จบสัปดาห์ก่อน
+        <b style={{ color: current?.color }}>{current?.name}</b> กำลังเล่นสัปดาห์นี้
+        {left ? <span className="muted"> · {left === 1 ? 'คุณเล่นต่อจากนี้' : `อีก ${left} ตาถึงคุณ`}</span> : null}
       </p>
-      {left ? <p className="muted">{left === 1 ? 'คุณเป็นคนถัดไป เตรียมวางแผนได้เลย!' : `อีก ${left} ตาจะถึงคุณ`}</p> : null}
       {recent.length > 0 && (
         <ul className="ticker">
           {recent.map((t) => (
@@ -173,9 +188,8 @@ function Waiting({ view, myIds, current, ticker }) {
 function HoursBar({ left, max }) {
   const pct = max ? Math.max(0, Math.min(100, (left / max) * 100)) : 0;
   return (
-    <div className={`hours-bar${left <= 8 ? ' is-low' : ''}`} role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={left} aria-label="เวลาที่เหลือในสัปดาห์">
-      <div className="hours-fill" style={{ width: `${pct}%` }} />
-      <span>⏳ เหลือเวลา {left}/{max} ชม.</span>
+    <div className={`meter${left <= 8 ? ' is-low' : ''}`} role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={left} aria-label="เวลาที่เหลือในสัปดาห์">
+      <span style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -191,8 +205,10 @@ function Countdown({ deadline, total }) {
   const pct = total ? Math.min(100, (shown / total) * 100) : 100;
   return (
     <div className={`countdown${shown <= 15 ? ' is-low' : ''}`} role="timer" aria-label={`เหลือเวลาจริง ${shown} วินาที`}>
-      <div className="countdown-bar" style={{ width: `${pct}%` }} />
-      <span>⏱ เวลาเล่นจริงเหลือ {shown} วินาที</span>
+      <span className="countdown-text">เวลาเล่นเหลือ {shown} วิ</span>
+      <span className="countdown-track">
+        <span style={{ width: `${pct}%` }} />
+      </span>
     </div>
   );
 }

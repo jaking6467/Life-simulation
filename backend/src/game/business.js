@@ -45,7 +45,7 @@ export const businessActions = [
     variants: (state, p) =>
       here(p)
         .filter((b) => !ownedBusiness(p, b.id))
-        .map((b) => ({ params: { bizId: b.id }, label: `เปิด${b.icon} ${b.name}`, desc: `กำไรเฉลี่ย ~${fm(b.base)}/สัปดาห์ ความเสี่ยงขาดทุน ${Math.round(b.risk * 100)}% • ${reqText(b)}`, hours: 2, cost: b.price })),
+        .map((b) => ({ params: { bizId: b.id }, icon: b.icon, label: `เปิด${b.name}`, desc: `กำไร ~${fm(b.base)}/สัปดาห์ · เสี่ยงขาดทุน ${Math.round(b.risk * 100)}% · ${reqText(b)}`, hours: 2, cost: b.price })),
     check: (state, p, v) => {
       if (p.businesses.length >= B.maxOwned) return `มีธุรกิจได้สูงสุด ${B.maxOwned} กิจการ`;
       return reqBlocker(p, BUSINESSES[v.params.bizId]);

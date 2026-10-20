@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { LOCATIONS, JOBS, BUSINESSES, GLOBAL_EVENT_BY_ID, gridPosition, initials, locationName } from '../lib/game.js';
 
-// แผนที่เมือง: อาคาร 18 หลังรอบถนนวงแหวน ตรงกลางเป็นข้อมูลสัปดาห์และผู้เล่นปัจจุบัน
+// แผนที่เมือง: อาคาร 18 หลังรอบถนนวงแหวน ตรงกลางเป็นข้อมูลสัปดาห์และอาคารที่เลือก
 // แตะอาคาร 1 ครั้งเพื่อดูข้อมูล แตะซ้ำ (หรือกดปุ่มเดินไป) เพื่อเดินทาง
 // highlight (ไม่บังคับ): รหัสอาคารที่ผู้ช่วยมือใหม่แนะนำให้ไป (หรือ array) จะเรืองแสงบนแผนที่
 export function CityMap({ view, tokens, myIds, canMove, selected, onSelect, onMove, highlight = null }) {
@@ -29,12 +29,14 @@ export function CityMap({ view, tokens, myIds, canMove, selected, onSelect, onMo
         const { col, row } = gridPosition(i);
         const here = positions[loc.id] || [];
         const travel = canMove ? view.travel[loc.id] : null;
-        const isHome = viewer && viewer.housing === loc.id;
-        const isJob = viewer && JOBS[viewer.job]?.location === loc.id;
-        const biz = viewer ? viewer.businesses.filter((b) => BUSINESSES[b.id].location === loc.id) : [];
-        const lucky = viewer?.role === 'mystic' && viewer.horoscope?.lucky === loc.id;
-        const unlucky = viewer?.role === 'mystic' && viewer.horoscope?.unlucky === loc.id;
+        const marks = [];
+        if (viewer?.housing === loc.id) marks.push(['🏠', 'บ้านของคุณ']);
+        if (viewer && JOBS[viewer.job]?.location === loc.id) marks.push(['💼', 'ที่ทำงานของคุณ']);
+        if (viewer?.businesses?.some((b) => BUSINESSES[b.id].location === loc.id)) marks.push(['🏪', 'ธุรกิจของคุณ']);
+        if (viewer?.role === 'mystic' && viewer.horoscope?.lucky === loc.id) marks.push(['🍀', 'ดวงบอกว่าที่นี่นำโชค']);
+        if (viewer?.role === 'mystic' && viewer.horoscope?.unlucky === loc.id) marks.push(['💀', 'ดวงบอกว่าที่นี่อัปมงคล']);
         const closed = view.global.closed === loc.id;
+        if (closed) marks.push(['🚧', 'ปิดชั่วคราว']);
         const isCurrentSpot = current && (tokens[current.id] || current.location) === loc.id;
         const coach = Array.isArray(highlight) ? highlight.includes(loc.id) : highlight === loc.id;
         return (
@@ -45,25 +47,27 @@ export function CityMap({ view, tokens, myIds, canMove, selected, onSelect, onMo
             style={{ gridColumn: col, gridRow: row }}
             onClick={() => (selected === loc.id && canMove && travel?.ok ? onMove(loc.id) : onSelect(loc.id))}
             title={`${loc.name} — ${loc.desc}`}
+            aria-label={`${loc.name}${travel ? ` เดิน ${travel.hours} ชม.` : ''}`}
           >
-            <span className="bldg-badges">
-              {isHome && <span title="บ้านของคุณ">🏠</span>}
-              {isJob && <span title="ที่ทำงานของคุณ">💼</span>}
-              {biz.map((b) => (
-                <span key={b.id} title={`ธุรกิจของคุณ: ${BUSINESSES[b.id].name}`}>🏪</span>
-              ))}
-              {lucky && <span title="ดวงบอกว่าที่นี่นำโชค">🍀</span>}
-              {unlucky && <span title="ดวงบอกว่าที่นี่อัปมงคล">💀</span>}
-              {closed && <span title="ปิดชั่วคราว">🚧</span>}
-            </span>
+            {marks.length > 0 && (
+              <span className="bldg-badges">
+                {marks.map(([icon, label]) => (
+                  <span key={label} title={label}>
+                    {icon}
+                  </span>
+                ))}
+              </span>
+            )}
             {coach && (
               <span className="bldg-coach-pin" aria-hidden="true">
                 👇
               </span>
             )}
-            <span className="bldg-icon">{loc.icon}</span>
-            <span className="bldg-name">{loc.name}</span>
-            {travel && <span className={`bldg-cost${travel.ok ? '' : ' is-bad'}`}>🚶 {travel.hours} ชม.</span>}
+            <span className="bldg-icon" aria-hidden="true">
+              {loc.icon}
+            </span>
+            <span className="bldg-name">{loc.short || loc.name}</span>
+            {travel && <span className={`bldg-cost${travel.ok ? '' : ' is-bad'}`}>{travel.hours} ชม.</span>}
             {here.length > 0 && (
               <span className="bldg-tokens">
                 {here.map((p) => (
@@ -78,68 +82,53 @@ export function CityMap({ view, tokens, myIds, canMove, selected, onSelect, onMo
       })}
 
       <div className="city-center">
-        <div className="city-week">
-          สัปดาห์ที่ <b>{view.week}</b> / {view.maxWeeks}
-        </div>
-        {event && (
+        {event && !sel && (
           <div className="city-event" title={event.text}>
-            {event.icon} <b>{event.name}</b>
-            <small>
-              {event.text}
-              {view.global.closed ? ` (${locationName(view.global.closed)})` : ''}
-            </small>
+            <span aria-hidden="true">{event.icon}</span>
+            <span>
+              <b>{event.name}</b>
+              <small>
+                {event.text}
+                {view.global.closed ? ` (${locationName(view.global.closed)})` : ''}
+              </small>
+            </span>
           </div>
         )}
         {sel ? (
           <div className="city-sel">
             <div className="city-sel-head">
-              <span className="city-sel-icon">{sel.icon}</span>
+              <span className="city-sel-icon" aria-hidden="true">
+                {sel.icon}
+              </span>
               <div>
                 <b>{sel.name}</b>
                 <p>{sel.desc}</p>
               </div>
-              <button type="button" className="icon-btn" onClick={() => onSelect(null)} aria-label="ปิด">
+              <button type="button" className="icon-btn icon-btn-sm" onClick={() => onSelect(null)} aria-label="ปิด">
                 ✕
               </button>
             </div>
             {canMove && selTravel && sel.id !== current?.location && (
-              <button type="button" className="btn btn-primary" disabled={!selTravel.ok} onClick={() => onMove(sel.id)}>
-                {selTravel.ok ? `🚶 เดินไปที่นี่ (${selTravel.hours} ชม.)` : view.global.closed === sel.id ? 'ปิดชั่วคราว' : `เวลาไม่พอ (ต้องใช้ ${selTravel.hours} ชม.)`}
+              <button type="button" className="btn btn-primary btn-block" disabled={!selTravel.ok} onClick={() => onMove(sel.id)}>
+                {selTravel.ok ? `เดินไปที่นี่ · ${selTravel.hours} ชม.` : view.global.closed === sel.id ? 'ปิดชั่วคราว' : `เวลาไม่พอ (ต้องใช้ ${selTravel.hours} ชม.)`}
               </button>
             )}
           </div>
         ) : (
           current && (
             <div className="city-now" style={{ '--pc': current.color }}>
-              <span className="avatar" style={{ background: current.color }}>{initials(current.name)}</span>
+              <span className="avatar" style={{ background: current.color }}>
+                {initials(current.name)}
+              </span>
               <div>
-                <b>{mineTurn ? (myIds.length > 1 ? `ตาของ ${current.name}` : 'ตาของคุณ!') : `ตาของ ${current.name}`}</b>
-                <small>📍 {locationName(tokens[current.id] || current.location)}</small>
+                <b>{mineTurn ? (myIds.length > 1 ? `ตาของ ${current.name}` : 'ตาของคุณ') : `ตาของ ${current.name}`}</b>
+                <small>{locationName(tokens[current.id] || current.location)}</small>
               </div>
-              <HoursRing left={current.hoursLeft} max={current.hoursMax} />
             </div>
           )
         )}
-        {canMove && !sel && <p className="city-hint">แตะอาคารเพื่อดูข้อมูล แตะซ้ำเพื่อเดินไป</p>}
+        {canMove && !sel && <p className="city-hint">แตะอาคารเพื่อดู แตะซ้ำเพื่อเดินไป</p>}
       </div>
     </div>
-  );
-}
-
-export function HoursRing({ left, max }) {
-  const pct = max ? Math.max(0, Math.min(1, left / max)) : 0;
-  const r = 22;
-  const c = 2 * Math.PI * r;
-  return (
-    <span className={`hours-ring${left <= 8 ? ' is-low' : ''}`} title={`เหลือเวลา ${left} จาก ${max} ชั่วโมง`}>
-      <svg viewBox="0 0 56 56" aria-hidden="true">
-        <circle cx="28" cy="28" r={r} className="hr-bg" />
-        <circle cx="28" cy="28" r={r} className="hr-fg" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} />
-      </svg>
-      <span className="hr-text">
-        <b>{left}</b>
-        <small>ชม.</small>
-      </span>
-    </span>
   );
 }

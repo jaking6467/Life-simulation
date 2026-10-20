@@ -26,10 +26,10 @@ export function PlayerList({ view, seats, myIds }) {
   );
 }
 
-function Bar({ label, icon, value, tone }) {
+function Bar({ label, value, tone }) {
   return (
     <div className={`stat stat-${tone}`} title={`${label} ${value}/100`}>
-      <span className="stat-icon">{icon}</span>
+      <span className="stat-label">{label}</span>
       <span className="stat-track">
         <span className="stat-fill" style={{ width: `${value}%` }} />
       </span>
@@ -43,111 +43,67 @@ function PlayerCard({ player: p, view, order, rank, seat, isCurrent, isMine }) {
   const role = ROLES[p.role];
   const job = JOBS[p.job];
   const done = role.quests.filter((q) => p.quests[q.id]).length;
+  const status = seat?.away ? 'ระบบเล่นแทน' : seat && !seat.connected ? 'หลุด' : null;
   return (
     <article className={`pcard${isCurrent ? ' is-current' : ''}${isMine ? ' is-mine' : ''}`} style={{ '--pc': p.color }}>
       <header className="pcard-head">
-        <span className="avatar" style={{ background: p.color }}>{initials(p.name)}</span>
+        <span className="avatar" style={{ background: p.color }}>
+          {initials(p.name)}
+        </span>
         <div className="pcard-name">
-          <b>{p.name}</b>
-          <span className="pcard-tags">
-            <span className="tag tag-role" title={role.desc}>
-              {role.icon} {role.name}
-            </span>
+          <b>
+            {p.name}
             {isMine && <span className="tag tag-me">คุณ</span>}
-            {seat?.isBot && <span className="tag">บอท</span>}
-            {seat?.local && <span className="tag">เครื่องนี้</span>}
-            {seat?.away && <span className="tag tag-warn">ระบบเล่นแทน</span>}
-            {seat && !seat.connected && <span className="tag tag-bad">หลุด</span>}
-          </span>
+          </b>
+          <small>
+            {role.icon} {role.name}
+            {seat?.isBot ? ' · บอท' : ''}
+            {status && <span className="tag tag-warn">{status}</span>}
+          </small>
         </div>
-        <div className="pcard-score" title={`อันดับ ${rank} • ลำดับการเล่น ${order}`}>
+        <div className="pcard-score" title={`อันดับ ${rank} · ลำดับการเล่นที่ ${order}`}>
           <b>{p.score}</b>
-          <small>{isCurrent ? '▶ กำลังเล่น' : `อันดับ ${rank}`}</small>
+          <small>{isCurrent ? 'กำลังเล่น' : `อันดับ ${rank}`}</small>
         </div>
       </header>
 
-      <div className="pcard-money">
-        <span className="cash" title="เงินสด">💵 {formatMoney(p.cash)}</span>
-        {p.savings > 0 && <span className="savings" title="เงินฝากธนาคาร">🏦 {formatMoney(p.savings)}</span>}
-        {p.loans > 0 && <span className="debt">หนี้ {p.loans} สัญญา</span>}
-      </div>
-
       <div className="stats">
-        <Bar label="สุขภาพ" icon="❤️" value={p.stats.health} tone="health" />
-        <Bar label="ความสุข" icon="😊" value={p.stats.happiness} tone="happy" />
-        <Bar label="ความสะอาด" icon="🧼" value={p.stats.hygiene} tone="clean" />
+        <Bar label="สุขภาพ" value={p.stats.health} tone="health" />
+        <Bar label="ความสุข" value={p.stats.happiness} tone="happy" />
+        <Bar label="ความสะอาด" value={p.stats.hygiene} tone="clean" />
       </div>
 
-      <div className="pcard-line">
-        💼 {job ? <>{job.title} <small className="muted">({formatMoney(job.wage)}/ชม.)</small></> : <span className="muted">ว่างงาน</span>}
-      </div>
-      <div className="pcard-line">
-        🎓 {p.education.completed.length ? p.education.completed.map((id) => COURSES[id].icon).join(' ') : <span className="muted">ยังไม่มีวุฒิ</span>}
-        {p.education.enrolled && (
-          <small className="muted">
-            {' '}
-            · กำลังเรียน{COURSES[p.education.enrolled].name} {p.education.progress}/{COURSES[p.education.enrolled].sessions}
-          </small>
+      <div className="pcard-meta">
+        <span title="เงินสด">{formatMoney(p.cash)}</span>
+        {p.savings > 0 && <span title="เงินฝากธนาคาร">ฝาก {formatMoney(p.savings)}</span>}
+        {p.loans > 0 && <span className="is-bad">หนี้ {p.loans}</span>}
+        <span className="pcard-job" title={job ? `${job.title} ${formatMoney(job.wage)}/ชม.` : 'ยังไม่มีงาน'}>
+          {job ? job.title : 'ว่างงาน'}
+        </span>
+        {p.love && (
+          <span title={`ความรัก ${p.love.affection}/100`}>
+            {p.love.stage === 'married' ? '💍' : '💑'} {p.love.name}
+          </span>
         )}
       </div>
-      {(p.love || p.kids.length > 0) && <FamilyLine p={p} />}
-      {p.businesses.length > 0 && (
-        <div className="pcard-line">
-          🏪{' '}
-          {p.businesses.map((b) => (
-            <span key={b.id} className="biz-chip" title={`${BUSINESSES[b.id].name} ระดับ ${b.level}${b.lastProfit != null ? ` • สัปดาห์ล่าสุด ${formatMoney(b.lastProfit)}` : ''}`}>
-              {BUSINESSES[b.id].icon} Lv{b.level}
-              {b.lastProfit != null && <small className={b.lastProfit >= 0 ? 'up' : 'down'}> {b.lastProfit >= 0 ? '+' : ''}{formatMoney(b.lastProfit)}</small>}
-            </span>
-          ))}
-        </div>
-      )}
-      <div className="pcard-icons">
-        <span title={`${HOMES[p.housing].name}${p.owned === p.housing ? ' (บ้านของตัวเอง)' : ' (เช่า)'}`}>
-          {p.housing === 'condo' ? '🏙️' : '🏚️'}
-          {p.owned === p.housing && '🔑'}
-        </span>
-        {p.furniture.map((id) => (
-          <span key={id} title={FURNITURE[id].name}>{FURNITURE[id].icon}</span>
-        ))}
-        {p.vehicle && <span title={VEHICLES[p.vehicle].name}>{VEHICLES[p.vehicle].icon}</span>}
-        {p.pets.map((id) => (
-          <span key={id} title={PETS[id].name}>{PETS[id].icon}</span>
-        ))}
-        <span title={`เสื้อผ้า: ${CLOTHES[p.clothes.tier].name}${p.clothes.tier ? ` (เหลือ ${p.clothes.weeksLeft} สัปดาห์)` : ''}`}>{CLOTHES[p.clothes.tier].icon || '🩹'}</span>
-        {Object.keys(p.insurance).map((id) => (
-          <span key={id} title={INSURANCE[id].name}>{INSURANCE[id].icon}</span>
-        ))}
-        {p.cards.length > 0 && <span title={isMine ? `การ์ดในมือ: ${p.cards.map((c) => CARDS[c].name).join(', ')}` : `ถือการ์ด ${p.cards.length} ใบ`}>🃏×{p.cards.length}</span>}
-        {p.amulets > 0 && <span title="เครื่องรางกันการ์ดแกล้ง">🧿×{p.amulets}</span>}
-        {isCurrent && <span title={p.ate ? 'กินแล้วสัปดาห์นี้' : 'ยังไม่ได้กิน'}>{p.ate ? '🍽️✓' : '🍽️✗'}</span>}
-      </div>
-      <footer className="pcard-foot">
-        <span>📍 {locationName(p.location)}</span>
-        <span title="ทรัพย์สินสุทธิ (เงินสด + เงินฝาก + หุ้น + ของ − หนี้)">สุทธิ {formatMoney(p.netWorth)}</span>
-      </footer>
+
       <button type="button" className="pcard-more" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        🏅 ภารกิจ {done}/{role.quests.length} {p.lastWeek ? `· สัปดาห์ล่าสุด +${p.lastWeek.points}` : ''} {open ? '▲' : '▼'}
+        <span>
+          ภารกิจ {done}/{role.quests.length}
+          {p.lastWeek ? ` · สัปดาห์ล่าสุด +${p.lastWeek.points}` : ''}
+        </span>
+        <span aria-hidden="true">{open ? '▴' : '▾'}</span>
       </button>
       {open && <Details p={p} view={view} role={role} isMine={isMine} />}
     </article>
   );
 }
 
-function FamilyLine({ p }) {
-  const L = p.love;
+function Row({ label, children }) {
   return (
-    <div className="pcard-line family-line">
-      {L && (
-        <span title={`${L.stage === 'married' ? 'คู่ชีวิต' : 'แฟน'}: ${L.name} • ความรัก ${L.affection}/100 • ชอบ${DATE_STYLES[L.likes]}`}>
-          {L.stage === 'married' ? '💍' : '💑'} {L.name}{' '}
-          <span className={`love-meter${L.affection < 30 ? ' is-low' : ''}`} aria-label={`ความรัก ${L.affection}`}>
-            <span style={{ width: `${L.affection}%` }} />
-          </span>
-          <small className="muted"> {L.affection}</small>
-        </span>
-      )}
-      {p.kids.length > 0 && <span title={p.kids.map((k) => k.name).join(', ')}> 👶×{p.kids.length}</span>}
+    <div className="drow">
+      <span className="drow-label">{label}</span>
+      <span className="drow-value">{children}</span>
     </div>
   );
 }
@@ -155,62 +111,87 @@ function FamilyLine({ p }) {
 function Details({ p, view, role, isMine }) {
   const stocks = Object.entries(p.stocks).filter(([, n]) => n > 0);
   const L = p.love;
+  const items = [
+    ...p.furniture.map((id) => FURNITURE[id]),
+    ...(p.vehicle ? [VEHICLES[p.vehicle]] : []),
+    ...p.pets.map((id) => PETS[id]),
+  ];
   return (
     <div className="pcard-details">
       <ul className="quests">
         {role.quests.map((q) => (
           <li key={q.id} className={p.quests[q.id] ? 'is-done' : ''}>
-            {p.quests[q.id] ? '✅' : '⬜'} {q.text} <b>+{q.points}</b>
+            <span aria-hidden="true">{p.quests[q.id] ? '✓' : '○'}</span> {q.text} <b>+{q.points}</b>
           </li>
         ))}
       </ul>
-      <p className="muted small">{role.perks.join(' • ')}</p>
-      {p.role === 'mystic' && p.horoscope && (
-        <p className="small">
-          🔮 ดวงสัปดาห์นี้: นำโชคที่ <b>{locationName(p.horoscope.lucky)}</b>
-          {p.horoscope.used ? ' (ทำตามแล้ว ✓)' : ''} · อัปมงคลที่ {locationName(p.horoscope.unlucky)}
-        </p>
+      <p className="perks">{role.perks.join(' · ')}</p>
+
+      <Row label="ที่อยู่">
+        {HOMES[p.housing].name}
+        {p.owned === p.housing ? ' (ของตัวเอง)' : ' (เช่า)'} · ตอนนี้อยู่{locationName(p.location)}
+      </Row>
+      <Row label="การศึกษา">
+        {p.education.completed.length ? p.education.completed.map((id) => COURSES[id].name).join(', ') : 'ยังไม่มีวุฒิ'}
+        {p.education.enrolled && ` · กำลังเรียน${COURSES[p.education.enrolled].name} ${p.education.progress}/${COURSES[p.education.enrolled].sessions}`}
+      </Row>
+      {(L || p.kids.length > 0) && (
+        <Row label="ครอบครัว">
+          {L && `${L.stage === 'married' ? 'แต่งงานกับ' : 'คบกับ'}${L.name} (ความรัก ${L.affection}) · ชอบ${DATE_STYLES[L.likes]}`}
+          {L?.stage === 'married' && ` · ช่วยหารายได้ ${formatMoney(L.income)}/สัปดาห์`}
+          {p.kids.length > 0 && ` · ลูก: ${p.kids.map((k) => k.name).join(', ')}`}
+        </Row>
       )}
-      {p.role === 'influencer' && <p className="small">📱 ผู้ติดตาม {p.followers.toLocaleString('en-US')} คน</p>}
-      {p.artworks.length > 0 && <p className="small">🖼️ ภาพที่ยังไม่ขาย: {p.artworks.map((a) => `"${a.title}" (${formatMoney(a.value)})`).join(', ')}</p>}
-      {p.finds.length > 0 && <p className="small">🧺 ของที่คุ้ยเจอ: {p.finds.map((f) => f.name).join(', ')}</p>}
-      {stocks.length > 0 && (
-        <p className="small">
-          📈 หุ้น: {stocks.map(([sym, n]) => `${STOCKS[sym].icon} ${n} หน่วย (${formatMoney(view.stocks[sym].price * n)})`).join(', ')}
-        </p>
-      )}
-      {L && (
-        <p className="small">
-          {L.stage === 'married' ? '💍 แต่งงานกับ' : '💑 คบกับ'}
-          {L.name} {L.weeks} สัปดาห์ · ชอบ{DATE_STYLES[L.likes]}
-          {L.stage === 'married' ? ` · ช่วยหารายได้ ${formatMoney(L.income)}/สัปดาห์` : ''}
-        </p>
-      )}
-      {p.kids.length > 0 && <p className="small">👶 ลูก: {p.kids.map((k) => k.name).join(', ')}</p>}
       {p.owned && (
-        <p className="small">
-          🔑 เป็นเจ้าของ{HOMES[p.owned].name} (มูลค่า {formatMoney(p.homeValue)})
-          {p.mortgage ? ` · เหลือหนี้บ้าน ${formatMoney(p.mortgage.remaining)} ผ่อน ${formatMoney(p.mortgage.payment)}/สัปดาห์` : ' · ผ่อนหมดแล้ว'}
-        </p>
+        <Row label="บ้าน">
+          {HOMES[p.owned].name} มูลค่า {formatMoney(p.homeValue)}
+          {p.mortgage ? ` · หนี้บ้าน ${formatMoney(p.mortgage.remaining)} (ผ่อน ${formatMoney(p.mortgage.payment)}/สัปดาห์)` : ' · ผ่อนหมดแล้ว'}
+        </Row>
       )}
       {p.businesses.length > 0 && (
-        <p className="small">
-          🏪 ธุรกิจ:{' '}
+        <Row label="ธุรกิจ">
           {p.businesses
-            .map((b) => `${BUSINESSES[b.id].icon} ${BUSINESSES[b.id].name} ระดับ ${b.level}${b.lastProfit != null ? ` (สัปดาห์ล่าสุด ${b.lastProfit >= 0 ? '+' : ''}${formatMoney(b.lastProfit)})` : ''}`)
+            .map((b) => `${BUSINESSES[b.id].name} ระดับ ${b.level}${b.lastProfit != null ? ` (${b.lastProfit >= 0 ? '+' : ''}${formatMoney(b.lastProfit)})` : ''}`)
             .join(', ')}
-        </p>
+        </Row>
       )}
-      {Object.keys(p.insurance).length > 0 && <p className="small">📄 ประกัน: {Object.keys(p.insurance).map((id) => INSURANCE[id].name).join(', ')}</p>}
-      {isMine && p.cards.length > 0 && <p className="small">🃏 การ์ดในมือ: {p.cards.map((c) => `${CARDS[c].icon} ${CARDS[c].name}`).join(', ')}</p>}
-      <p className="small muted">
-        🛒 ของสด {p.groceries} มื้อ · 🎟️ ลอตเตอรี่ {p.tickets} ใบ · ⭐ ประสบการณ์ทำงาน {p.xp} ชม. · 🏅 คะแนนคุณสมบัติงาน {p.merit}
-      </p>
-      {p.weeklyPreview && (
-        <p className="small muted">
-          ถ้าจบสัปดาห์ตอนนี้จะได้ประมาณ <b>{p.weeklyPreview.total}</b> คะแนน
-        </p>
+      {Object.keys(p.insurance).length > 0 && <Row label="ประกัน">{Object.keys(p.insurance).map((id) => INSURANCE[id].name).join(', ')}</Row>}
+      {stocks.length > 0 && (
+        <Row label="หุ้น">{stocks.map(([sym, n]) => `${STOCKS[sym].name} ${n} (${formatMoney(view.stocks[sym].price * n)})`).join(', ')}</Row>
       )}
+      {items.length > 0 && (
+        <Row label="ของ">
+          {items.map((it) => (
+            <span key={it.id} title={it.name} className="item-icon">
+              {it.icon}
+            </span>
+          ))}
+        </Row>
+      )}
+      <Row label="เสื้อผ้า">
+        {CLOTHES[p.clothes.tier].name}
+        {p.clothes.tier ? ` (เหลือ ${p.clothes.weeksLeft} สัปดาห์)` : ''}
+      </Row>
+      {(p.cards.length > 0 || p.amulets > 0) && (
+        <Row label="การ์ด">
+          {isMine ? p.cards.map((c) => CARDS[c].name).join(', ') || '-' : `${p.cards.length} ใบ`}
+          {p.amulets > 0 && ` · เครื่องราง ${p.amulets}`}
+        </Row>
+      )}
+      {p.role === 'mystic' && p.horoscope && (
+        <Row label="ดวง">
+          นำโชค{locationName(p.horoscope.lucky)}
+          {p.horoscope.used ? ' ✓' : ''} · อัปมงคล{locationName(p.horoscope.unlucky)}
+        </Row>
+      )}
+      {p.role === 'influencer' && <Row label="ผู้ติดตาม">{p.followers.toLocaleString('en-US')} คน</Row>}
+      {p.artworks.length > 0 && <Row label="ภาพวาด">{p.artworks.map((a) => `${a.title} (${formatMoney(a.value)})`).join(', ')}</Row>}
+      {p.finds.length > 0 && <Row label="ของเก่า">{p.finds.map((f) => f.name).join(', ')}</Row>}
+      <Row label="อื่น ๆ">
+        ของสด {p.groceries} มื้อ · ลอตเตอรี่ {p.tickets} ใบ · ประสบการณ์ {p.xp} ชม. · คุณสมบัติงาน {p.merit}
+      </Row>
+      <Row label="ทรัพย์สิน">{formatMoney(p.netWorth)}</Row>
+      {p.weeklyPreview && <p className="perks">ถ้าจบสัปดาห์ตอนนี้จะได้ประมาณ {p.weeklyPreview.total} คะแนน</p>}
     </div>
   );
 }

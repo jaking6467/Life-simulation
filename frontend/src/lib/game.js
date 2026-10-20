@@ -15,7 +15,7 @@ export { DATE_SPOTS, DATE_STYLES } from '@game/family.js';
 import { JOBS } from '@game/jobs.js';
 import { LOCATION_BY_ID } from '@game/city.js';
 
-export const BOT_LEVEL_TEXT = { easy: '😊 ง่าย', normal: '🙂 ปกติ', hard: '😈 ยาก' };
+export const BOT_LEVEL_TEXT = { easy: 'ง่าย', normal: 'ปกติ', hard: 'ยาก' };
 
 export function jobTitle(p) {
   return JOBS[p.job]?.title || null;

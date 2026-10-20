@@ -30,7 +30,7 @@ export function decayDemand(state) {
 
 export function demandText(state, key) {
   const d = demandOf(state, key);
-  return d >= 0.05 ? ` • 📈 ราคาขึ้น ${Math.round(d * 100)}% (มีคนแห่ซื้อ)` : '';
+  return d >= 0.05 ? ` · ราคาขึ้น ${Math.round(d * 100)}% (คนแห่ซื้อ)` : '';
 }
 
 // ซื้อขายหุ้น: ราคาที่ได้จริงคือค่าเฉลี่ยระหว่างก่อนและหลังแรงซื้อ/ขาย + ค่าธรรมเนียม

@@ -28,7 +28,7 @@ export function SavedGames({ onLoad, onError }) {
   const fileInput = <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={openFile} data-testid="save-file-input" />;
   const openButton = (
     <button type="button" className="link-btn" onClick={() => fileRef.current?.click()}>
-      📂 เปิดไฟล์เซฟ
+      เปิดไฟล์เซฟ
     </button>
   );
 
@@ -43,11 +43,11 @@ export function SavedGames({ onLoad, onError }) {
 
   return (
     <section className="home-section saved-games">
-      <h2>💾 เล่นต่อ</h2>
+      <h2>เล่นต่อ</h2>
       {auto && (
         <div className="save-continue">
           <button type="button" className="btn btn-primary" onClick={() => onLoad(auto.save)}>
-            {auto.summary.status === 'finished' ? '🏆 ดูผลเกมล่าสุด' : '▶ เล่นต่อเกมล่าสุด'}
+            {auto.summary.status === 'finished' ? 'ดูผลเกมล่าสุด' : '▶ เล่นต่อเกมล่าสุด'}
           </button>
           <SaveSummary summary={auto.summary} />
         </div>

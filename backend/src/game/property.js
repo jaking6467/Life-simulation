@@ -38,7 +38,7 @@ export const propertyActions = [
           return {
             params: { homeId: h.id },
             label: `ซื้อ${h.name} (ผ่อนธนาคาร)`,
-            desc: `ราคา ${fm(value)} ดาวน์ ${Math.round(M.down * 100)}% ผ่อน ~${fm(payment)}/สัปดาห์ แทนค่าเช่า ${fm(h.rent)} • ย้ายเข้าทันที • บ้านของตัวเอง +2 คะแนนบ้าน`,
+            desc: `ราคา ${fm(value)} · ผ่อน ~${fm(payment)}/สัปดาห์ แทนค่าเช่า · ย้ายเข้าทันที · คะแนนบ้าน +2`,
             hours: 1,
             cost: down,
           };
