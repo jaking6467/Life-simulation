@@ -85,10 +85,11 @@ npm run simulate           # จำลอง 300 เกม แสดงคะแ
 
 **แยก backend / frontend**
 - Backend (เช่น Render, root directory `backend`): build `npm install`, start `node server.js`
-- Frontend (เช่น Vercel, root directory `frontend`): framework **Vite**, output directory `build`
-  และตั้ง environment variable `VITE_SOCKET_URL` (หรือ `REACT_APP_SOCKET_URL` แบบเดิม) เป็น URL ของ backend
-- หน้าเว็บใช้โค้ดเกมจาก `backend/src/game` ด้วย ต้องเปิดตัวเลือกให้ build เห็นไฟล์นอก root directory
-  (Vercel: "Include files outside the root directory in the Build Step")
+- Frontend บน Vercel: มี `vercel.json` กำหนดคำสั่ง install/build ไว้แล้ว ใช้ได้ทั้ง root directory เป็น `frontend` หรือรากของ repo
+  ตั้ง environment variable `VITE_SOCKET_URL` (หรือ `REACT_APP_SOCKET_URL` แบบเดิม) เป็น URL ของ backend เพื่อเล่นออนไลน์
+  (ถ้าไม่ตั้ง จะเล่นได้เฉพาะโหมดออฟไลน์)
+- หน้าเว็บใช้โค้ดเกมจาก `backend/src/game` ด้วย ถ้า root directory เป็น `frontend` ต้องเปิดตัวเลือก
+  "Include files outside the root directory in the Build Step" (เปิดอยู่แล้วโดยค่าเริ่มต้น)
 - ถ้าต้องการจำกัดโดเมนที่เชื่อมต่อได้ ตั้ง `CORS_ORIGIN` ที่ backend (คั่นด้วย `,`)
 
 **GitHub Pages** — `cd frontend && npm run build:docs` แล้ว commit โฟลเดอร์ `docs/`
